@@ -1,0 +1,16 @@
+[package]
+name = "arrow2-derive"
+version = "0.1.0"
+authors = ["Jorge Leitao <jorgecarleitao@gmail.com>"]
+edition = "2018"
+license = "Apache-2.0 OR MIT"
+keywords = ["Arrow"]
+
+[workspace]
+members = [
+    "derive-internal",
+]
+
+[dependencies]
+derive-internal = {path = "derive-internal"}
+arrow2 = { version = "0.3", default-features = false }
