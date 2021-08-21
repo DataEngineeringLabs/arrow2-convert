@@ -1,4 +1,9 @@
-use arrow2::datatypes::{DataType, Field};
+# Arrow2-derive - derive for Arrow2
+
+This crate allows
+
+```rust
+use arrow2::datatypes::Field;
 use arrow2::{array::*, record_batch::RecordBatch};
 use arrow2_derive::{ArrowStruct, StructOfArrow};
 
@@ -10,8 +15,7 @@ pub struct Foo {
     mass1: i64,
 }
 
-#[test]
-fn new() {
+fn main() {
     // create and populate
     let mut a = FooArray::default();
     a.push(Some("a"), Some(0.1), 1);
@@ -38,3 +42,20 @@ fn new() {
 
     // which can be used in IPC, FFI, analytics, etc.
 }
+```
+
+thereby allowing users to write struct of arrays idiomatically in Rust and
+have them be layed out in memory according to the arrow format.
+
+## License
+
+Licensed under either of
+
+ * Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+ * MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
+at your option.
+
+### Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
