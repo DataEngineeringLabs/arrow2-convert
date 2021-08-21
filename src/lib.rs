@@ -6,7 +6,7 @@ pub use derive_internal::StructOfArrow;
 use arrow2::array::StructArray;
 use arrow2::datatypes::Field;
 
-trait ArrowStruct {
+pub trait ArrowStruct {
     fn n_fields() -> usize;
     fn field(i: usize) -> Field;
     fn to_arrow(self) -> StructArray;
