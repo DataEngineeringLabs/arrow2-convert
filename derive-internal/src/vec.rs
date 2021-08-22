@@ -1,49 +1,29 @@
 use proc_macro2::TokenStream;
 use quote::quote;
+use syn::parse_quote;
 
 use super::input::Input;
 use super::parse::{parse, ParseTree};
 
-macro_rules! primitive {
-    ($type:ty) => {{
-        let path: syn::TypePath =
-            syn::parse(quote! {arrow2::array::MutablePrimitiveArray<$type>}.into()).unwrap();
-        syn::Type::Path(path)
-    }};
-}
-
-macro_rules! to_type {
-    ($type:ty) => {{
-        let type_: syn::Type = syn::parse(quote! {$type}.into()).unwrap();
-        type_
-    }};
-}
-
 macro_rules! to_datatype {
     ($type:tt) => {{
-        let type_: syn::Type =
-            syn::parse(quote! {arrow2::datatypes::DataType::$type}.into()).unwrap();
-        type_
+        parse_quote!(arrow2::datatypes::DataType::$type)
     }};
 }
 
 fn type_to_array(v: &str) -> syn::Type {
     match v {
-        "u8" => primitive!(u8),
-        "u16" => primitive!(u16),
-        "u32" => primitive!(u32),
-        "u64" => primitive!(u64),
-        "i8" => primitive!(i8),
-        "i16" => primitive!(i16),
-        "i32" => primitive!(i32),
-        "i64" => primitive!(i64),
-        "f32" => primitive!(f32),
-        "f64" => primitive!(f64),
-        "String" => {
-            let path: syn::TypePath =
-                syn::parse(quote! {arrow2::array::MutableUtf8Array<i32>}.into()).unwrap();
-            syn::Type::Path(path)
-        }
+        "u8" => parse_quote!(arrow2::array::MutablePrimitiveArray<u8>),
+        "u16" => parse_quote!(arrow2::array::MutablePrimitiveArray<u16>),
+        "u32" => parse_quote!(arrow2::array::MutablePrimitiveArray<u32>),
+        "u64" => parse_quote!(arrow2::array::MutablePrimitiveArray<u64>),
+        "i8" => parse_quote!(arrow2::array::MutablePrimitiveArray<i8>),
+        "i16" => parse_quote!(arrow2::array::MutablePrimitiveArray<i16>),
+        "i32" => parse_quote!(arrow2::array::MutablePrimitiveArray<i32>),
+        "i64" => parse_quote!(arrow2::array::MutablePrimitiveArray<i64>),
+        "f32" => parse_quote!(arrow2::array::MutablePrimitiveArray<f32>),
+        "f64" => parse_quote!(arrow2::array::MutablePrimitiveArray<f64>),
+        "String" => parse_quote!(arrow2::array::MutableUtf8Array<i32>),
         other => panic!("Type {} not supported", other),
     }
 }
@@ -54,9 +34,10 @@ fn tree_to_array(tree: &ParseTree) -> (syn::Type, bool) {
         ParseTree::Vec(arg, is_nullable) => {
             if let ParseTree::Type(arg, false) = arg.as_ref() {
                 if arg == "u8" {
-                    let path: syn::TypePath =
-                        syn::parse(quote! {arrow2::array::MutableBinaryArray<i32>}.into()).unwrap();
-                    (syn::Type::Path(path), *is_nullable)
+                    (
+                        parse_quote!(arrow2::array::MutableBinaryArray<i32>),
+                        *is_nullable,
+                    )
                 } else {
                     todo!()
                 }
@@ -104,16 +85,16 @@ fn tree_to_datatype(tree: &ParseTree) -> syn::Type {
 fn type_to_ref(v: &str, is_nullable: bool) -> syn::Type {
     if is_nullable {
         match v {
-            "u8" => to_type!(Option<u8>),
-            "u16" => to_type!(Option<u16>),
-            "u32" => to_type!(Option<u32>),
-            "u64" => to_type!(Option<u64>),
-            "i8" => to_type!(Option<i8>),
-            "i16" => to_type!(Option<i16>),
-            "i32" => to_type!(Option<i32>),
-            "i64" => to_type!(Option<i64>),
-            "f32" => to_type!(Option<f32>),
-            "f64" => to_type!(Option<f64>),
+            "u8" => parse_quote!(Option<u8>),
+            "u16" => parse_quote!(Option<u16>),
+            "u32" => parse_quote!(Option<u32>),
+            "u64" => parse_quote!(Option<u64>),
+            "i8" => parse_quote!(Option<i8>),
+            "i16" => parse_quote!(Option<i16>),
+            "i32" => parse_quote!(Option<i32>),
+            "i64" => parse_quote!(Option<i64>),
+            "f32" => parse_quote!(Option<f32>),
+            "f64" => parse_quote!(Option<f64>),
             "String" => {
                 let type_: syn::Type = syn::parse(quote! {Option<&str>}.into()).unwrap();
                 type_
@@ -122,20 +103,17 @@ fn type_to_ref(v: &str, is_nullable: bool) -> syn::Type {
         }
     } else {
         match v {
-            "u8" => to_type!(u8),
-            "u16" => to_type!(u16),
-            "u32" => to_type!(u32),
-            "u64" => to_type!(u64),
-            "i8" => to_type!(i8),
-            "i16" => to_type!(i16),
-            "i32" => to_type!(i32),
-            "i64" => to_type!(i64),
-            "f32" => to_type!(f32),
-            "f64" => to_type!(f64),
-            "String" => {
-                let type_: syn::Type = syn::parse(quote! {&str}.into()).unwrap();
-                type_
-            }
+            "u8" => parse_quote!(u8),
+            "u16" => parse_quote!(u16),
+            "u32" => parse_quote!(u32),
+            "u64" => parse_quote!(u64),
+            "i8" => parse_quote!(i8),
+            "i16" => parse_quote!(i16),
+            "i32" => parse_quote!(i32),
+            "i64" => parse_quote!(i64),
+            "f32" => parse_quote!(f32),
+            "f64" => parse_quote!(f64),
+            "String" => parse_quote!(&str),
             other => panic!("Type {} not supported", other),
         }
     }
@@ -147,8 +125,8 @@ fn tree_to_ref(tree: &ParseTree) -> syn::Type {
         ParseTree::Vec(arg, is_nullable) => {
             if let ParseTree::Type(arg, false) = arg.as_ref() {
                 match (is_nullable, arg.as_ref()) {
-                    (true, "u8") => syn::parse(quote! {Option<&[u8]>}.into()).unwrap(),
-                    (false, "u8") => syn::parse(quote! {&[u8]}.into()).unwrap(),
+                    (true, "u8") => parse_quote!(Option<&[u8]>),
+                    (false, "u8") => parse_quote!(&[u8]),
                     _ => todo!(),
                 }
             } else {
