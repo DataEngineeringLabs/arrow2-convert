@@ -13,4 +13,4 @@ members = [
 
 [dependencies]
 derive-internal = {path = "derive-internal"}
-arrow2 = { version = "0.3", default-features = false }
+arrow2 = { git = "https://github.com/jorgecarleitao/arrow2", branch = "mutable_try_push" }

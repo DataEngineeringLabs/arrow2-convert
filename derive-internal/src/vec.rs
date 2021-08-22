@@ -12,19 +12,16 @@ macro_rules! to_datatype {
 }
 
 fn type_to_array(v: &str) -> syn::Type {
-    match v {
-        "u8" => parse_quote!(arrow2::array::MutablePrimitiveArray<u8>),
-        "u16" => parse_quote!(arrow2::array::MutablePrimitiveArray<u16>),
-        "u32" => parse_quote!(arrow2::array::MutablePrimitiveArray<u32>),
-        "u64" => parse_quote!(arrow2::array::MutablePrimitiveArray<u64>),
-        "i8" => parse_quote!(arrow2::array::MutablePrimitiveArray<i8>),
-        "i16" => parse_quote!(arrow2::array::MutablePrimitiveArray<i16>),
-        "i32" => parse_quote!(arrow2::array::MutablePrimitiveArray<i32>),
-        "i64" => parse_quote!(arrow2::array::MutablePrimitiveArray<i64>),
-        "f32" => parse_quote!(arrow2::array::MutablePrimitiveArray<f32>),
-        "f64" => parse_quote!(arrow2::array::MutablePrimitiveArray<f64>),
-        "String" => parse_quote!(arrow2::array::MutableUtf8Array<i32>),
-        other => panic!("Type {} not supported", other),
+    if matches!(
+        v,
+        "u8" | "u16" | "u32" | "u64" | "i8" | "i16" | "i32" | "i64" | "f32" | "f64"
+    ) {
+        let a: proc_macro2::TokenStream = v.parse().unwrap();
+        parse_quote!(arrow2::array::MutablePrimitiveArray<#a>)
+    } else if v == "String" {
+        parse_quote!(arrow2::array::MutableUtf8Array<i32>)
+    } else {
+        panic!("Type {} not supported", v)
     }
 }
 
@@ -32,23 +29,23 @@ fn tree_to_array(tree: &ParseTree) -> (syn::Type, bool) {
     match tree {
         ParseTree::Type(arg, is_nullabe) => (type_to_array(arg), *is_nullabe),
         ParseTree::Vec(arg, is_nullable) => {
-            if let ParseTree::Type(arg, false) = arg.as_ref() {
-                if arg == "u8" {
-                    (
-                        parse_quote!(arrow2::array::MutableBinaryArray<i32>),
-                        *is_nullable,
-                    )
-                } else {
-                    todo!()
-                }
+            if let ParseTree::Type(arg, _) = arg.as_ref() {
+                let type_ = match arg.as_ref() {
+                    "u8" => parse_quote!(arrow2::array::MutableBinaryArray<i32>),
+                    other => {
+                        let array = type_to_array(other);
+                        parse_quote!(arrow2::array::MutableListArray<i32, #array>)
+                    }
+                };
+                (type_, *is_nullable)
             } else {
-                todo!()
+                todo!("Vec<{:?}> is still not implemented", arg)
             }
         }
     }
 }
 
-fn type_to_datatype(v: &str) -> syn::Type {
+fn type_to_datatype(v: &str) -> syn::Expr {
     match v {
         "u8" => to_datatype!(UInt8),
         "u16" => to_datatype!(UInt16),
@@ -65,18 +62,29 @@ fn type_to_datatype(v: &str) -> syn::Type {
     }
 }
 
-fn tree_to_datatype(tree: &ParseTree) -> syn::Type {
+fn tree_to_datatype(tree: &ParseTree) -> syn::Expr {
     match tree {
         ParseTree::Type(arg, _) => type_to_datatype(arg),
         ParseTree::Vec(arg, _) => {
-            if let ParseTree::Type(arg, false) = arg.as_ref() {
-                if arg == "u8" {
-                    to_datatype!(Binary)
-                } else {
-                    todo!()
+            if let ParseTree::Type(arg, is_nullable) = arg.as_ref() {
+                match arg.as_ref() {
+                    "u8" => to_datatype!(Binary),
+                    _ => {
+                        let inner = type_to_datatype(arg);
+                        let is_nullable = *is_nullable;
+                        parse_quote!({
+                            arrow2::datatypes::DataType::List(Box::new(
+                            arrow2::datatypes::Field::new(
+                                "item",
+                                #inner,
+                                #is_nullable,
+                            )
+                        ))
+                        })
+                    }
                 }
             } else {
-                todo!()
+                todo!("Vec<{:?}> is still not implemented", arg)
             }
         }
     }
@@ -95,10 +103,7 @@ fn type_to_ref(v: &str, is_nullable: bool) -> syn::Type {
             "i64" => parse_quote!(Option<i64>),
             "f32" => parse_quote!(Option<f32>),
             "f64" => parse_quote!(Option<f64>),
-            "String" => {
-                let type_: syn::Type = syn::parse(quote! {Option<&str>}.into()).unwrap();
-                type_
-            }
+            "String" => parse_quote!(Option<&str>),
             other => panic!("Type {} not supported", other),
         }
     } else {
@@ -123,14 +128,21 @@ fn tree_to_ref(tree: &ParseTree) -> syn::Type {
     match tree {
         ParseTree::Type(arg, is_nullable) => type_to_ref(arg, *is_nullable),
         ParseTree::Vec(arg, is_nullable) => {
-            if let ParseTree::Type(arg, false) = arg.as_ref() {
+            if let ParseTree::Type(arg, inner_is_nullable) = arg.as_ref() {
                 match (is_nullable, arg.as_ref()) {
                     (true, "u8") => parse_quote!(Option<&[u8]>),
                     (false, "u8") => parse_quote!(&[u8]),
-                    _ => todo!(),
+                    (true, other) => {
+                        let inner = type_to_ref(other, *inner_is_nullable);
+                        parse_quote!(Option<Vec<#inner>>)
+                    }
+                    (false, other) => {
+                        let inner = type_to_ref(other, *inner_is_nullable);
+                        parse_quote!(Vec<#inner>)
+                    }
                 }
             } else {
-                todo!()
+                todo!("Vec<{:?}> is still not implemented", arg)
             }
         }
     }
@@ -222,9 +234,10 @@ pub fn derive(input: &Input) -> TokenStream {
         }
 
         impl #name {
+            #[allow(clippy::too_many_arguments)]
             fn push(&mut self, #(#fields_names: #fields_refs,)*) {
-                #(self.#required_fields.push(Some(#required_fields));)*;
-                #(self.#nullable_fields.push(#nullable_fields);)*
+                #(self.#required_fields.try_push(Some(#required_fields)).unwrap();)*;
+                #(self.#nullable_fields.try_push(#nullable_fields).unwrap();)*
             }
 
             /*

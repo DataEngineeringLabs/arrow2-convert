@@ -10,14 +10,36 @@ pub struct Foo {
     mass1: i64,
     // binary
     a3: Option<Vec<u8>>,
+    // optional list array of optional strings
+    nullable_list: Option<Vec<Option<String>>>,
+    // optional list array of required strings
+    required_list: Vec<Option<String>>,
+    // other
+    other_list: Option<Vec<Option<i32>>>,
 }
 
 #[test]
 fn new() {
     // create and populate
     let mut a = FooArray::default();
-    a.push(Some("a"), Some(0.1), 1, Some(b"aa"));
-    a.push(Some("a"), Some(0.2), 2, None);
+    a.push(
+        Some("a"),
+        Some(0.1),
+        1,
+        Some(b"aa"),
+        None,
+        vec![Some("aa"), Some("bb")],
+        None,
+    );
+    a.push(
+        Some("a"),
+        Some(0.2),
+        2,
+        None,
+        Some(vec![Some("aa"), Some("bb")]),
+        vec![Some("aa"), Some("bb")],
+        Some(vec![Some(1), Some(2)]),
+    );
 
     // convert it to an Arrow array
     let array: StructArray = a.into();
@@ -31,12 +53,27 @@ fn new() {
             Field::new("mass", DataType::Float64, true),
             Field::new("mass1", DataType::Int64, false),
             Field::new("a3", DataType::Binary, true),
+            Field::new(
+                "nullable_list",
+                DataType::List(Box::new(Field::new("item", DataType::Utf8, true))),
+                true
+            ),
+            Field::new(
+                "required_list",
+                DataType::List(Box::new(Field::new("item", DataType::Utf8, true))),
+                false
+            ),
+            Field::new(
+                "other_list",
+                DataType::List(Box::new(Field::new("item", DataType::Int32, true))),
+                false
+            ),
         ]
     );
 
     // structs can be converted to arrow's `RecordBatch`
     let batch: RecordBatch = (&array).into();
-    assert_eq!(batch.num_columns(), 4);
+    assert_eq!(batch.num_columns(), 6);
     assert_eq!(batch.num_rows(), 2);
 
     // which can be used in IPC, FFI, analytics, etc.
