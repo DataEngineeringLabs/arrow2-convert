@@ -47,6 +47,25 @@ fn type_to_array(v: &str) -> syn::Type {
     }
 }
 
+fn tree_to_array(tree: &ParseTree) -> (syn::Type, bool) {
+    match tree {
+        ParseTree::Type(arg, is_nullabe) => (type_to_array(arg), *is_nullabe),
+        ParseTree::Vec(arg, is_nullable) => {
+            if let ParseTree::Type(arg, false) = arg.as_ref() {
+                if arg == "u8" {
+                    let path: syn::TypePath =
+                        syn::parse(quote! {arrow2::array::MutableBinaryArray<i32>}.into()).unwrap();
+                    (syn::Type::Path(path), *is_nullable)
+                } else {
+                    todo!()
+                }
+            } else {
+                todo!()
+            }
+        }
+    }
+}
+
 fn type_to_datatype(v: &str) -> syn::Type {
     match v {
         "u8" => to_datatype!(UInt8),
@@ -61,6 +80,23 @@ fn type_to_datatype(v: &str) -> syn::Type {
         "f64" => to_datatype!(Float64),
         "String" => to_datatype!(Utf8),
         other => panic!("Type {} not supported", other),
+    }
+}
+
+fn tree_to_datatype(tree: &ParseTree) -> syn::Type {
+    match tree {
+        ParseTree::Type(arg, _) => type_to_datatype(arg),
+        ParseTree::Vec(arg, _) => {
+            if let ParseTree::Type(arg, false) = arg.as_ref() {
+                if arg == "u8" {
+                    to_datatype!(Binary)
+                } else {
+                    todo!()
+                }
+            } else {
+                todo!()
+            }
+        }
     }
 }
 
@@ -104,28 +140,52 @@ fn type_to_ref(v: &str, is_nullable: bool) -> syn::Type {
     }
 }
 
-fn parse_bracket_arg(args: &syn::PathArguments) -> Option<String> {
-    if let syn::PathArguments::AngleBracketed(f) = args {
-        if let syn::GenericArgument::Type(syn::Type::Path(a)) = &f.args[0] {
-            Some(a.path.segments[0].ident.to_string())
-        } else {
-            None
+fn tree_to_ref(tree: &ParseTree) -> syn::Type {
+    match tree {
+        ParseTree::Type(arg, is_nullable) => type_to_ref(arg, *is_nullable),
+        ParseTree::Vec(arg, is_nullable) => {
+            if let ParseTree::Type(arg, false) = arg.as_ref() {
+                match (is_nullable, arg.as_ref()) {
+                    (true, "u8") => syn::parse(quote! {Option<&[u8]>}.into()).unwrap(),
+                    (false, "u8") => syn::parse(quote! {&[u8]}.into()).unwrap(),
+                    _ => todo!(),
+                }
+            } else {
+                todo!()
+            }
         }
-    } else {
-        None
     }
 }
 
-fn parse(path: &syn::TypePath) -> (String, bool) {
+fn parse_bracket_arg(args: &syn::PathArguments, is_nullable: bool) -> ParseTree {
+    if let syn::PathArguments::AngleBracketed(f) = args {
+        if let syn::GenericArgument::Type(syn::Type::Path(path)) = &f.args[0] {
+            parse(path, is_nullable)
+        } else {
+            unreachable!()
+        }
+    } else {
+        unreachable!()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ParseTree {
+    Type(String, bool),
+    Vec(Box<ParseTree>, bool),
+}
+
+fn parse(path: &syn::TypePath, is_nullable: bool) -> ParseTree {
     match path.path.segments[0].ident.to_string().as_ref() {
         "Option" => {
-            let arg = parse_bracket_arg(&path.path.segments[0].arguments);
-            let is_nullabe = arg.is_some();
-            let arg = arg.unwrap_or_else(|| path.path.segments[0].ident.to_string());
-            (arg, is_nullabe)
+            assert!(!is_nullable);
+            parse_bracket_arg(&path.path.segments[0].arguments, true)
         }
-        "Vec" => todo!("Vec is still not implemented"),
-        _ => (path.path.segments[0].ident.to_string(), false),
+        "Vec" => {
+            let arg = parse_bracket_arg(&path.path.segments[0].arguments, false);
+            ParseTree::Vec(Box::new(arg), is_nullable)
+        }
+        _ => ParseTree::Type(path.path.segments[0].ident.to_string(), is_nullable),
     }
 }
 
@@ -158,39 +218,26 @@ pub fn derive(input: &Input) -> TokenStream {
         })
         .collect::<Vec<_>>();
 
-    let (fields_types, fields_nullable): (Vec<_>, Vec<_>) = input
+    let tree = input
         .fields
         .iter()
         .map(|field| match &field.ty {
-            syn::Type::Path(path) => {
-                let (arg, is_nullabe) = parse(path);
-                (type_to_array(&arg), is_nullabe)
-            }
+            syn::Type::Path(path) => parse(path, false),
             other => panic!("Type {:?} not supported", other),
-        })
-        .unzip();
-    let fields_options = input
-        .fields
-        .iter()
-        .map(|field| match &field.ty {
-            syn::Type::Path(path) => {
-                let (arg, is_nullable) = parse(path);
-                type_to_ref(&arg, is_nullable)
-            }
-            other => other.clone(),
         })
         .collect::<Vec<_>>();
 
-    let fields_datatypes = input
-        .fields
+    let (fields_types, fields_nullable): (Vec<_>, Vec<_>) =
+        tree.iter().map(|tree| tree_to_array(tree)).unzip();
+
+    let fields_datatypes = tree
         .iter()
-        .map(|field| match &field.ty {
-            syn::Type::Path(path) => {
-                let (arg, _) = parse(path);
-                type_to_datatype(&arg)
-            }
-            other => other.clone(),
-        })
+        .map(|tree| tree_to_datatype(tree))
+        .collect::<Vec<_>>();
+
+    let fields_refs = tree
+        .iter()
+        .map(|tree| tree_to_ref(tree))
         .collect::<Vec<_>>();
 
     let mut required_fields = vec![];
@@ -228,7 +275,7 @@ pub fn derive(input: &Input) -> TokenStream {
         }
 
         impl #name {
-            fn push(&mut self, #(#fields_names: #fields_options,)*) {
+            fn push(&mut self, #(#fields_names: #fields_refs,)*) {
                 #(self.#required_fields.push(Some(#required_fields));)*;
                 #(self.#nullable_fields.push(#nullable_fields);)*
             }
