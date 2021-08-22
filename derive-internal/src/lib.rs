@@ -2,6 +2,7 @@ use proc_macro2::TokenStream;
 use quote::TokenStreamExt;
 
 mod input;
+mod parse;
 mod vec;
 
 /// Derive macro for the Array trait.
