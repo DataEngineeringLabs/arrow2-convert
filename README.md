@@ -75,8 +75,8 @@ fn main() {
         ]
     );
 
-    // structs can be converted to arrow's `RecordBatch`
-    let batch: RecordBatch = (&array).into();
+    // `StructArray` can then be converted to arrow's `RecordBatch`
+    let batch: RecordBatch = array.into();
     assert_eq!(batch.num_columns(), 6);
     assert_eq!(batch.num_rows(), 2);
 
