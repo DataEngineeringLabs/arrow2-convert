@@ -90,6 +90,8 @@ fn tree_to_datatype(tree: &ParseTree) -> syn::Expr {
     }
 }
 
+/*
+// likely needed for slices
 fn type_to_ref(v: &str, is_nullable: bool) -> syn::Type {
     if is_nullable {
         match v {
@@ -147,6 +149,7 @@ fn tree_to_ref(tree: &ParseTree) -> syn::Type {
         }
     }
 }
+ */
 
 pub fn derive(input: &Input) -> TokenStream {
     let original_name = &input.name;
@@ -194,11 +197,6 @@ pub fn derive(input: &Input) -> TokenStream {
         .map(|tree| tree_to_datatype(tree))
         .collect::<Vec<_>>();
 
-    let fields_refs = tree
-        .iter()
-        .map(|tree| tree_to_ref(tree))
-        .collect::<Vec<_>>();
-
     let mut required_fields = vec![];
     let mut nullable_fields = vec![];
     fields_names
@@ -234,8 +232,10 @@ pub fn derive(input: &Input) -> TokenStream {
         }
 
         impl #name {
-            #[allow(clippy::too_many_arguments)]
-            fn push(&mut self, #(#fields_names: #fields_refs,)*) {
+            fn push(&mut self, item: #original_name) {
+                let #original_name {
+                    #(#fields_names,)*
+                } = item;
                 #(self.#required_fields.try_push(Some(#required_fields)).unwrap();)*;
                 #(self.#nullable_fields.try_push(#nullable_fields).unwrap();)*
             }
