@@ -1,0 +1,36 @@
+name: Check and test
+
+on: [push, pull_request]
+
+jobs:
+  docker:
+    name: Test
+    runs-on: ubuntu-latest
+    container:
+      image: amd64/rust
+    steps:
+      - uses: actions/checkout@v2
+      - name: Cache Cargo
+        uses: actions/cache@v2
+        with:
+          path: /github/home/.cargo
+          # these represent dependencies downloaded by cargo
+          # and thus do not depend on the OS, arch nor rust version.
+          key: cargo-cache-
+      - name: Cache dependencies
+        uses: actions/cache@v2
+        with:
+          path: /github/home/target
+          # these represent compiled steps of both dependencies and arrow
+          # and thus are specific for a particular OS, arch and rust version.
+          key: ${{ runner.os }}-amd64-target-cache-stable
+      - name: Setup toolchain
+        run: |
+          rustup toolchain install stable
+          rustup default stable
+          rustup component add rustfmt
+      - name: Build
+        run: |
+          export CARGO_HOME="/github/home/.cargo"
+          export CARGO_TARGET_DIR="/github/home/target"
+          cargo test
