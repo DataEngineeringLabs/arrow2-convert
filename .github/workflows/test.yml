@@ -1,0 +1,19 @@
+name: Check and test
+
+on: [push, pull_request]
+
+jobs:
+  docker:
+    name: Test
+    runs-on: ubuntu-latest
+    container:
+      image: amd64/rust
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup toolchain
+        run: |
+          rustup toolchain install stable
+          rustup default stable
+          rustup component add rustfmt
+      - name: test
+        run: cargo test
