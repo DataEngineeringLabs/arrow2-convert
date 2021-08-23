@@ -11,8 +11,9 @@ use arrow2_derive::{ArrowStruct, StructOfArrow};
 #[arrow2_derive = "Default, Debug"]
 pub struct Foo {
     name: Option<String>,
-    mass: Option<f64>,
-    mass1: i64,
+    is_deleted: bool,
+    a1: Option<f64>,
+    a2: i64,
     // binary
     a3: Option<Vec<u8>>,
     // optional list array of optional strings
@@ -24,10 +25,12 @@ pub struct Foo {
 }
 
 impl Foo {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         name: Option<String>,
-        mass: Option<f64>,
-        mass1: i64,
+        is_deleted: bool,
+        a1: Option<f64>,
+        a2: i64,
         a3: Option<Vec<u8>>,
         nullable_list: Option<Vec<Option<String>>>,
         required_list: Vec<Option<String>>,
@@ -35,8 +38,9 @@ impl Foo {
     ) -> Self {
         Self {
             name,
-            mass,
-            mass1,
+            is_deleted,
+            a1,
+            a2,
             a3,
             nullable_list,
             required_list,
@@ -49,6 +53,7 @@ fn main() {
     // an item
     let item = Foo::new(
         Some("a".to_string()),
+        false,
         Some(0.1),
         1,
         Some(b"aa".to_vec()),
@@ -69,8 +74,9 @@ fn main() {
         array.fields(),
         &[
             Field::new("name", DataType::Utf8, true),
-            Field::new("mass", DataType::Float64, true),
-            Field::new("mass1", DataType::Int64, false),
+            Field::new("is_deleted", DataType::Boolean, false),
+            Field::new("a1", DataType::Float64, true),
+            Field::new("a2", DataType::Int64, false),
             Field::new("a3", DataType::Binary, true),
             Field::new(
                 "nullable_list",
@@ -92,10 +98,10 @@ fn main() {
 
     // `StructArray` can then be converted to arrow's `RecordBatch`
     let batch: RecordBatch = array.into();
-    assert_eq!(batch.num_columns(), 7);
+    assert_eq!(batch.num_columns(), 8);
     assert_eq!(batch.num_rows(), 1);
 
-    // which can be used in IPC, FFI, analytics, etc.
+    // which can be used in IPC, FFI, to parquet, analytics, etc.
 }
 ```
 

@@ -20,6 +20,8 @@ fn type_to_array(v: &str) -> syn::Type {
         parse_quote!(arrow2::array::MutablePrimitiveArray<#a>)
     } else if v == "String" {
         parse_quote!(arrow2::array::MutableUtf8Array<i32>)
+    } else if v == "bool" {
+        parse_quote!(arrow2::array::MutableBooleanArray)
     } else {
         panic!("Type {} not supported", v)
     }
@@ -47,6 +49,7 @@ fn tree_to_array(tree: &ParseTree) -> (syn::Type, bool) {
 
 fn type_to_datatype(v: &str) -> syn::Expr {
     match v {
+        "bool" => to_datatype!(Boolean),
         "u8" => to_datatype!(UInt8),
         "u16" => to_datatype!(UInt16),
         "u32" => to_datatype!(UInt32),
