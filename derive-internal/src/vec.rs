@@ -188,7 +188,7 @@ pub fn derive(input: &Input) -> TokenStream {
         .iter()
         .map(|field| match &field.ty {
             syn::Type::Path(path) => parse(path, false),
-            other => panic!("Type {:?} not supported", other),
+            _ => panic!("Only types are supported atm"),
         })
         .collect::<Vec<_>>();
 
