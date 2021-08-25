@@ -1,6 +1,7 @@
 # Arrow2-derive - derive for Arrow2
 
-This crate allows
+This crate allows writing a struct in Rust and have it derive
+a struct of arrays layed out in memory according to the arrow format.
 
 ```rust
 use arrow2::datatypes::{DataType, Field};
@@ -105,8 +106,24 @@ fn main() {
 }
 ```
 
-thereby allowing users to write struct of arrays idiomatically in Rust and
-have them be layed out in memory according to the arrow format.
+In the example above, the derived struct is
+
+```rust
+#[derive(Default, Debug)]
+pub struct FooArray {
+    name: MutableUtf8Array<i32>,
+    is_deleted: MutableBooleanArray<i32>,
+    a1: MutablePrimitiveArray<f64>,
+    a2: MutablePrimitiveArray<i64>,
+    a3: MutableBinaryArray<i32>,
+    nullable_list: MutableListArray<i32, MutableUtf8Array<i32>>,
+    required_list: MutableListArray<i32, MutableUtf8Array<i32>>,
+    other_list: MutableListArray<i32, MutablePrimitiveArray<i32>>,
+}
+```
+
+`FooArray::push` lays data in memory according to the arrow spec and
+can be used for all kinds of IPC, FFI, etc. supported by `arrow2`.
 
 ## License
 

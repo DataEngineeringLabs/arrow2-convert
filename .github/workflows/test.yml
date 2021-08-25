@@ -34,3 +34,31 @@ jobs:
           export CARGO_HOME="/github/home/.cargo"
           export CARGO_TARGET_DIR="/github/home/target"
           cargo test
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Cache Cargo
+        uses: actions/cache@v2
+        with:
+          path: /home/runner/.cargo
+          # this key is not equal because the user is different than on a container (runner vs github)
+          key: cargo-coverage-cache-
+      - name: Cache dependencies
+        uses: actions/cache@v2
+        with:
+          path: /home/runner/target
+          # this key is not equal because coverage uses different compilation flags.
+          key: ${{ runner.os }}-amd64-target-coverage-cache-stable-
+      - name: Run coverage
+        run: |
+          export CARGO_HOME="/home/runner/.cargo"
+          export CARGO_TARGET_DIR="/home/runner/target"
+
+          cargo install --version 0.18.0 cargo-tarpaulin
+          cargo tarpaulin --out Xml
+      - name: Report coverage
+        continue-on-error: true
+        run: bash <(curl -s https://codecov.io/bash)
