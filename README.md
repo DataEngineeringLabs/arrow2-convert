@@ -7,9 +7,10 @@ a struct of arrays layed out in memory according to the arrow format.
 use arrow2::datatypes::{DataType, Field};
 use arrow2::{array::*, record_batch::RecordBatch};
 use arrow2_derive::{ArrowStruct, StructOfArrow};
+use chrono::naive::NaiveDate;
 
 #[derive(Debug, Clone, PartialEq, StructOfArrow)]
-#[arrow2_derive = "Default, Debug"]
+#[arrow2_derive = "Debug"]
 pub struct Foo {
     name: Option<String>,
     is_deleted: bool,
@@ -17,12 +18,12 @@ pub struct Foo {
     a2: i64,
     // binary
     a3: Option<Vec<u8>>,
+    // date32
+    a4: NaiveDate,
     // optional list array of optional strings
     nullable_list: Option<Vec<Option<String>>>,
     // optional list array of required strings
     required_list: Vec<Option<String>>,
-    // other
-    other_list: Option<Vec<Option<i32>>>,
 }
 
 impl Foo {
@@ -33,9 +34,9 @@ impl Foo {
         a1: Option<f64>,
         a2: i64,
         a3: Option<Vec<u8>>,
+        a4: NaiveDate,
         nullable_list: Option<Vec<Option<String>>>,
         required_list: Vec<Option<String>>,
-        other_list: Option<Vec<Option<i32>>>,
     ) -> Self {
         Self {
             name,
@@ -43,9 +44,9 @@ impl Foo {
             a1,
             a2,
             a3,
+            a4,
             nullable_list,
             required_list,
-            other_list,
         }
     }
 }
@@ -58,9 +59,9 @@ fn main() {
         Some(0.1),
         1,
         Some(b"aa".to_vec()),
+        NaiveDate::from_ymd(1970, 1, 2),
         None,
         vec![Some("aa".to_string()), Some("bb".to_string())],
-        None,
     );
 
     let mut array = FooArray::default();
@@ -79,6 +80,7 @@ fn main() {
             Field::new("a1", DataType::Float64, true),
             Field::new("a2", DataType::Int64, false),
             Field::new("a3", DataType::Binary, true),
+            Field::new("a4", DataType::Date32, false),
             Field::new(
                 "nullable_list",
                 DataType::List(Box::new(Field::new("item", DataType::Utf8, true))),
@@ -88,11 +90,6 @@ fn main() {
                 "required_list",
                 DataType::List(Box::new(Field::new("item", DataType::Utf8, true))),
                 false
-            ),
-            Field::new(
-                "other_list",
-                DataType::List(Box::new(Field::new("item", DataType::Int32, true))),
-                true
             ),
         ]
     );

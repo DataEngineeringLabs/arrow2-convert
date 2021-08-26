@@ -14,3 +14,6 @@ members = [
 [dependencies]
 derive-internal = {path = "derive-internal"}
 arrow2 = { version = "0.4", default-features = false }
+
+[dev-dependencies]
+chrono = "*"

@@ -18,12 +18,79 @@ fn type_to_array(v: &str) -> syn::Type {
     ) {
         let a: proc_macro2::TokenStream = v.parse().unwrap();
         parse_quote!(arrow2::array::MutablePrimitiveArray<#a>)
+    } else if v == "NaiveDate" {
+        parse_quote!(arrow2::array::MutablePrimitiveArray<i32>)
     } else if v == "String" {
         parse_quote!(arrow2::array::MutableUtf8Array<i32>)
     } else if v == "bool" {
         parse_quote!(arrow2::array::MutableBooleanArray)
     } else {
         panic!("Type {} not supported", v)
+    }
+}
+
+fn type_to_new_array(v: &str) -> syn::Expr {
+    if matches!(
+        v,
+        "u8" | "u16" | "u32" | "u64" | "i8" | "i16" | "i32" | "i64" | "f32" | "f64"
+    ) {
+        let a: proc_macro2::TokenStream = v.parse().unwrap();
+        parse_quote!(arrow2::array::MutablePrimitiveArray::<#a>::new())
+    } else if v == "NaiveDate" {
+        parse_quote!(arrow2::array::MutablePrimitiveArray::<i32>::new()
+            .to(arrow2::datatypes::DataType::Date32))
+    } else if v == "String" {
+        parse_quote!(arrow2::array::MutableUtf8Array::<i32>::new())
+    } else if v == "bool" {
+        parse_quote!(arrow2::array::MutableBooleanArray::new())
+    } else {
+        panic!("Type {} not supported", v)
+    }
+}
+
+fn tree_to_new_array(tree: &ParseTree) -> syn::Expr {
+    match tree {
+        ParseTree::Type(arg, _) => type_to_new_array(arg),
+        ParseTree::Vec(arg, _) => {
+            if let ParseTree::Type(arg, _) = arg.as_ref() {
+                match arg.as_ref() {
+                    "u8" => parse_quote!(arrow2::array::MutableBinaryArray::<i32>::new()),
+                    other => {
+                        let array = type_to_array(other);
+                        parse_quote!(arrow2::array::MutableListArray::<i32, #array>::new())
+                    }
+                }
+            } else {
+                todo!("Vec<{:?}> is still not implemented", arg)
+            }
+        }
+    }
+}
+
+fn tree_to_push(tree: &ParseTree, field_name: &syn::Ident) -> syn::Expr {
+    let default = |is_nullable: bool| {
+        if is_nullable {
+            parse_quote!(try_push(#field_name))
+        } else {
+            parse_quote!(try_push(Some(#field_name)))
+        }
+    };
+
+    match tree {
+        //ParseTree::Type(a, is_nullable) => default(*is_nullable),
+        ParseTree::Type(a, is_nullable) => match a.as_ref() {
+            "NaiveDate" => {
+                let map: syn::Expr = parse_quote!(|x| chrono::Datelike::num_days_from_ce(&x)
+                    - arrow2::temporal_conversions::EPOCH_DAYS_FROM_CE);
+                if *is_nullable {
+                    parse_quote!(try_push(#field_name.map(#map)))
+                } else {
+                    parse_quote!(try_push(Some(#field_name).map(#map)))
+                }
+            }
+            _ => default(*is_nullable),
+        },
+        ParseTree::Vec(a, is_nullable) => default(*is_nullable),
     }
 }
 
@@ -61,6 +128,7 @@ fn type_to_datatype(v: &str) -> syn::Expr {
         "f32" => to_datatype!(Float32),
         "f64" => to_datatype!(Float64),
         "String" => to_datatype!(Utf8),
+        "NaiveDate" => to_datatype!(Date32),
         other => panic!("Type {} not supported", other),
     }
 }
@@ -200,20 +268,19 @@ pub fn derive(input: &Input) -> TokenStream {
         .map(|tree| tree_to_datatype(tree))
         .collect::<Vec<_>>();
 
-    let mut required_fields = vec![];
-    let mut nullable_fields = vec![];
-    fields_names
-        .iter()
-        .zip(fields_nullable.iter())
-        .for_each(|(field, is_nullable)| {
-            if *is_nullable {
-                nullable_fields.push(*field)
-            } else {
-                required_fields.push(*field)
-            }
-        });
     let n_fields = fields_types.len();
     let fields_enumerate = (0..n_fields).collect::<Vec<_>>();
+
+    let new_array = tree
+        .iter()
+        .map(|tree| tree_to_new_array(tree))
+        .collect::<Vec<_>>();
+
+    let push_array = tree
+        .iter()
+        .zip(fields_names.iter())
+        .map(|(tree, field_name)| tree_to_push(tree, *field_name))
+        .collect::<Vec<_>>();
 
     let generated = quote! {
         /// An analog to `
@@ -230,7 +297,15 @@ pub fn derive(input: &Input) -> TokenStream {
 
         impl #name {
             pub fn new() -> Self {
-                Self::default()
+                Self {
+                    #(#fields_names: #new_array,)*
+                }
+            }
+        }
+
+        impl Default for #name {
+            fn default() -> Self {
+                Self::new()
             }
         }
 
@@ -239,8 +314,7 @@ pub fn derive(input: &Input) -> TokenStream {
                 let #original_name {
                     #(#fields_names,)*
                 } = item;
-                #(self.#required_fields.try_push(Some(#required_fields)).unwrap();)*;
-                #(self.#nullable_fields.try_push(#nullable_fields).unwrap();)*
+                #(self.#fields_names.#push_array.unwrap();)*;
             }
 
             /*
