@@ -121,6 +121,8 @@ pub struct FooArray {
     a1: MutablePrimitiveArray<f64>,
     a2: MutablePrimitiveArray<i64>,
     a3: MutableBinaryArray<i32>,
+    a4: MutablePrimitiveArray<i32>,
+    a5: MutablePrimitiveArray<i64>,
     nullable_list: MutableListArray<i32, MutableUtf8Array<i32>>,
     required_list: MutableListArray<i32, MutableUtf8Array<i32>>,
     other_list: MutableListArray<i32, MutablePrimitiveArray<i32>>,
