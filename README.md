@@ -4,10 +4,11 @@ This crate allows writing a struct in Rust and have it derive
 a struct of arrays layed out in memory according to the arrow format.
 
 ```rust
-use arrow2::datatypes::{DataType, Field};
+use arrow2::datatypes::{DataType, Field, TimeUnit};
 use arrow2::{array::*, record_batch::RecordBatch};
 use arrow2_derive::{ArrowStruct, StructOfArrow};
-use chrono::naive::NaiveDate;
+use chrono::naive::{NaiveDate, NaiveDateTime};
+use chrono::Timelike;
 
 #[derive(Debug, Clone, PartialEq, StructOfArrow)]
 #[arrow2_derive = "Debug"]
@@ -20,6 +21,8 @@ pub struct Foo {
     a3: Option<Vec<u8>>,
     // date32
     a4: NaiveDate,
+    // timestamp(ns, None)
+    a5: NaiveDateTime,
     // optional list array of optional strings
     nullable_list: Option<Vec<Option<String>>>,
     // optional list array of required strings
@@ -35,6 +38,7 @@ impl Foo {
         a2: i64,
         a3: Option<Vec<u8>>,
         a4: NaiveDate,
+        a5: NaiveDateTime,
         nullable_list: Option<Vec<Option<String>>>,
         required_list: Vec<Option<String>>,
     ) -> Self {
@@ -45,13 +49,15 @@ impl Foo {
             a2,
             a3,
             a4,
+            a5,
             nullable_list,
             required_list,
         }
     }
 }
 
-fn main() {
+#[test]
+fn new() {
     // an item
     let item = Foo::new(
         Some("a".to_string()),
@@ -60,6 +66,7 @@ fn main() {
         1,
         Some(b"aa".to_vec()),
         NaiveDate::from_ymd(1970, 1, 2),
+        NaiveDateTime::from_timestamp(10000, 0),
         None,
         vec![Some("aa".to_string()), Some("bb".to_string())],
     );
@@ -81,6 +88,7 @@ fn main() {
             Field::new("a2", DataType::Int64, false),
             Field::new("a3", DataType::Binary, true),
             Field::new("a4", DataType::Date32, false),
+            Field::new("a5", DataType::Timestamp(TimeUnit::Nanosecond, None), false),
             Field::new(
                 "nullable_list",
                 DataType::List(Box::new(Field::new("item", DataType::Utf8, true))),
@@ -96,7 +104,7 @@ fn main() {
 
     // `StructArray` can then be converted to arrow's `RecordBatch`
     let batch: RecordBatch = array.into();
-    assert_eq!(batch.num_columns(), 8);
+    assert_eq!(batch.num_columns(), 9);
     assert_eq!(batch.num_rows(), 1);
 
     // which can be used in IPC, FFI, to parquet, analytics, etc.

@@ -20,6 +20,8 @@ fn type_to_array(v: &str) -> syn::Type {
         parse_quote!(arrow2::array::MutablePrimitiveArray<#a>)
     } else if v == "NaiveDate" {
         parse_quote!(arrow2::array::MutablePrimitiveArray<i32>)
+    } else if v == "NaiveDateTime" {
+        parse_quote!(arrow2::array::MutablePrimitiveArray<i64>)
     } else if v == "String" {
         parse_quote!(arrow2::array::MutableUtf8Array<i32>)
     } else if v == "bool" {
@@ -39,6 +41,10 @@ fn type_to_new_array(v: &str) -> syn::Expr {
     } else if v == "NaiveDate" {
         parse_quote!(arrow2::array::MutablePrimitiveArray::<i32>::new()
             .to(arrow2::datatypes::DataType::Date32))
+    } else if v == "NaiveDateTime" {
+        parse_quote!(arrow2::array::MutablePrimitiveArray::<i64>::new().to(
+            arrow2::datatypes::DataType::Timestamp(arrow2::datatypes::TimeUnit::Nanosecond, None)
+        ))
     } else if v == "String" {
         parse_quote!(arrow2::array::MutableUtf8Array::<i32>::new())
     } else if v == "bool" {
@@ -77,7 +83,6 @@ fn tree_to_push(tree: &ParseTree, field_name: &syn::Ident) -> syn::Expr {
     };
 
     match tree {
-        //ParseTree::Type(a, is_nullable) => default(*is_nullable),
         ParseTree::Type(a, is_nullable) => match a.as_ref() {
             "NaiveDate" => {
                 let map: syn::Expr = parse_quote!(|x| chrono::Datelike::num_days_from_ce(&x)
@@ -88,9 +93,17 @@ fn tree_to_push(tree: &ParseTree, field_name: &syn::Ident) -> syn::Expr {
                     parse_quote!(try_push(Some(#field_name).map(#map)))
                 }
             }
+            "NaiveDateTime" => {
+                let map: syn::Expr = parse_quote!(|x| x.timestamp_nanos());
+                if *is_nullable {
+                    parse_quote!(try_push(#field_name.map(#map)))
+                } else {
+                    parse_quote!(try_push(Some(#field_name).map(#map)))
+                }
+            }
             _ => default(*is_nullable),
         },
-        ParseTree::Vec(a, is_nullable) => default(*is_nullable),
+        ParseTree::Vec(_, is_nullable) => default(*is_nullable),
     }
 }
 
@@ -129,6 +142,10 @@ fn type_to_datatype(v: &str) -> syn::Expr {
         "f64" => to_datatype!(Float64),
         "String" => to_datatype!(Utf8),
         "NaiveDate" => to_datatype!(Date32),
+        "NaiveDateTime" => parse_quote!(arrow2::datatypes::DataType::Timestamp(
+            arrow2::datatypes::TimeUnit::Nanosecond,
+            None
+        )),
         other => panic!("Type {} not supported", other),
     }
 }
