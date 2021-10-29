@@ -353,7 +353,7 @@ pub fn derive(input: &Input) -> TokenStream {
                 let #name { #(#fields_names, )* } = other;
                 let values = vec![#(#fields_names.into_arc(), )*];
 
-                StructArray::from_data(fields, values, None)
+                StructArray::from_data(DataType::Struct(fields), values, None)
             }
         }
 
