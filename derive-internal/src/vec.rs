@@ -1,182 +1,8 @@
 use proc_macro2::TokenStream;
-use quote::quote;
-use syn::parse_quote;
+use quote::{quote, quote_spanned};
+use syn::spanned::Spanned;
 
 use super::input::Input;
-use super::parse::{parse, ParseTree};
-
-macro_rules! to_datatype {
-    ($type:tt) => {{
-        parse_quote!(arrow2::datatypes::DataType::$type)
-    }};
-}
-
-fn type_to_array(v: &str) -> syn::Type {
-    if matches!(
-        v,
-        "u8" | "u16" | "u32" | "u64" | "i8" | "i16" | "i32" | "i64" | "f32" | "f64"
-    ) {
-        let a: proc_macro2::TokenStream = v.parse().unwrap();
-        parse_quote!(arrow2::array::MutablePrimitiveArray<#a>)
-    } else if v == "NaiveDate" {
-        parse_quote!(arrow2::array::MutablePrimitiveArray<i32>)
-    } else if v == "NaiveDateTime" {
-        parse_quote!(arrow2::array::MutablePrimitiveArray<i64>)
-    } else if v == "String" {
-        parse_quote!(arrow2::array::MutableUtf8Array<i32>)
-    } else if v == "bool" {
-        parse_quote!(arrow2::array::MutableBooleanArray)
-    } else {
-        panic!("Type {} not supported", v)
-    }
-}
-
-fn type_to_new_array(v: &str) -> syn::Expr {
-    if matches!(
-        v,
-        "u8" | "u16" | "u32" | "u64" | "i8" | "i16" | "i32" | "i64" | "f32" | "f64"
-    ) {
-        let a: proc_macro2::TokenStream = v.parse().unwrap();
-        parse_quote!(arrow2::array::MutablePrimitiveArray::<#a>::new())
-    } else if v == "NaiveDate" {
-        parse_quote!(arrow2::array::MutablePrimitiveArray::<i32>::new()
-            .to(arrow2::datatypes::DataType::Date32))
-    } else if v == "NaiveDateTime" {
-        parse_quote!(arrow2::array::MutablePrimitiveArray::<i64>::new().to(
-            arrow2::datatypes::DataType::Timestamp(arrow2::datatypes::TimeUnit::Nanosecond, None)
-        ))
-    } else if v == "String" {
-        parse_quote!(arrow2::array::MutableUtf8Array::<i32>::new())
-    } else if v == "bool" {
-        parse_quote!(arrow2::array::MutableBooleanArray::new())
-    } else {
-        panic!("Type {} not supported", v)
-    }
-}
-
-fn tree_to_new_array(tree: &ParseTree) -> syn::Expr {
-    match tree {
-        ParseTree::Type(arg, _) => type_to_new_array(arg),
-        ParseTree::Vec(arg, _) => {
-            if let ParseTree::Type(arg, _) = arg.as_ref() {
-                match arg.as_ref() {
-                    "u8" => parse_quote!(arrow2::array::MutableBinaryArray::<i32>::new()),
-                    other => {
-                        let array = type_to_array(other);
-                        parse_quote!(arrow2::array::MutableListArray::<i32, #array>::new())
-                    }
-                }
-            } else {
-                todo!("Vec<{:?}> is still not implemented", arg)
-            }
-        }
-    }
-}
-
-fn tree_to_push(tree: &ParseTree, field_name: &syn::Ident) -> syn::Expr {
-    let default = |is_nullable: bool| {
-        if is_nullable {
-            parse_quote!(try_push(#field_name))
-        } else {
-            parse_quote!(try_push(Some(#field_name)))
-        }
-    };
-
-    match tree {
-        ParseTree::Type(a, is_nullable) => match a.as_ref() {
-            "NaiveDate" => {
-                let map: syn::Expr = parse_quote!(|x| chrono::Datelike::num_days_from_ce(&x)
-                    - arrow2::temporal_conversions::EPOCH_DAYS_FROM_CE);
-                if *is_nullable {
-                    parse_quote!(try_push(#field_name.map(#map)))
-                } else {
-                    parse_quote!(try_push(Some(#field_name).map(#map)))
-                }
-            }
-            "NaiveDateTime" => {
-                let map: syn::Expr = parse_quote!(|x| x.timestamp_nanos());
-                if *is_nullable {
-                    parse_quote!(try_push(#field_name.map(#map)))
-                } else {
-                    parse_quote!(try_push(Some(#field_name).map(#map)))
-                }
-            }
-            _ => default(*is_nullable),
-        },
-        ParseTree::Vec(_, is_nullable) => default(*is_nullable),
-    }
-}
-
-fn tree_to_array(tree: &ParseTree) -> (syn::Type, bool) {
-    match tree {
-        ParseTree::Type(arg, is_nullabe) => (type_to_array(arg), *is_nullabe),
-        ParseTree::Vec(arg, is_nullable) => {
-            if let ParseTree::Type(arg, _) = arg.as_ref() {
-                let type_ = match arg.as_ref() {
-                    "u8" => parse_quote!(arrow2::array::MutableBinaryArray<i32>),
-                    other => {
-                        let array = type_to_array(other);
-                        parse_quote!(arrow2::array::MutableListArray<i32, #array>)
-                    }
-                };
-                (type_, *is_nullable)
-            } else {
-                todo!("Vec<{:?}> is still not implemented", arg)
-            }
-        }
-    }
-}
-
-fn type_to_datatype(v: &str) -> syn::Expr {
-    match v {
-        "bool" => to_datatype!(Boolean),
-        "u8" => to_datatype!(UInt8),
-        "u16" => to_datatype!(UInt16),
-        "u32" => to_datatype!(UInt32),
-        "u64" => to_datatype!(UInt64),
-        "i8" => to_datatype!(Int8),
-        "i16" => to_datatype!(Int16),
-        "i32" => to_datatype!(Int32),
-        "i64" => to_datatype!(Int64),
-        "f32" => to_datatype!(Float32),
-        "f64" => to_datatype!(Float64),
-        "String" => to_datatype!(Utf8),
-        "NaiveDate" => to_datatype!(Date32),
-        "NaiveDateTime" => parse_quote!(arrow2::datatypes::DataType::Timestamp(
-            arrow2::datatypes::TimeUnit::Nanosecond,
-            None
-        )),
-        other => panic!("Type {} not supported", other),
-    }
-}
-
-fn tree_to_datatype(tree: &ParseTree) -> syn::Expr {
-    match tree {
-        ParseTree::Type(arg, _) => type_to_datatype(arg),
-        ParseTree::Vec(arg, _) => {
-            if let ParseTree::Type(arg, is_nullable) = arg.as_ref() {
-                match arg.as_ref() {
-                    "u8" => to_datatype!(Binary),
-                    _ => {
-                        let inner = type_to_datatype(arg);
-                        let is_nullable = *is_nullable;
-                        parse_quote!({
-                            arrow2::datatypes::DataType::List(Box::new(
-                            arrow2::datatypes::Field::new(
-                                "item",
-                                #inner,
-                                #is_nullable,
-                            )
-                        ))
-                        })
-                    }
-                }
-            } else {
-                todo!("Vec<{:?}> is still not implemented", arg)
-            }
-        }
-    }
-}
 
 /*
 // likely needed for slices
@@ -245,59 +71,57 @@ pub fn derive(input: &Input) -> TokenStream {
     let other_derive = &input.derive();
     let visibility = &input.visibility;
 
-    let name = &input.vec_name();
+    let mutable_array_name = &input.mutable_array_name();
+    let array_name = &input.array_name();
+    let iterator_name = &input.iterator_name();
 
-    let fields_names = input
+    let field_names = input
         .fields
         .iter()
         .map(|field| field.ident.as_ref().unwrap())
         .collect::<Vec<_>>();
 
-    let fields_names_str = fields_names
+    if field_names.len() == 0 {
+        panic!("Struct needs more than one field");
+    }
+    let first_field = field_names[0];
+
+    let field_names_str = field_names
         .iter()
         .map(|field| syn::LitStr::new(&format!("{}", field), proc_macro2::Span::call_site()))
         .collect::<Vec<_>>();
 
-    let fields_doc = fields_names
+    let field_indices = field_names
+        .iter()
+        .enumerate()
+        .map(|(idx, _ident)| syn::LitInt::new(&format!("{}", idx), proc_macro2::Span::call_site()))
+        .collect::<Vec<_>>();
+
+    let field_docs = field_names
         .iter()
         .map(|field| {
             format!(
                 "A vector of `{0}` from a [`{1}`](struct.{1}.html)",
-                field, name
+                field, mutable_array_name
             )
         })
         .collect::<Vec<_>>();
 
-    let tree = input
+    let field_types: Vec<&syn::TypePath> = input
         .fields
         .iter()
         .map(|field| match &field.ty {
-            syn::Type::Path(path) => parse(path, false),
+            syn::Type::Path(path) => {
+                path
+            },
             _ => panic!("Only types are supported atm"),
         })
-        .collect::<Vec<_>>();
+        .collect::<Vec<&syn::TypePath>>();
 
-    let (fields_types, fields_nullable): (Vec<_>, Vec<_>) =
-        tree.iter().map(|tree| tree_to_array(tree)).unzip();
-
-    let fields_datatypes = tree
+    let mutable_field_array_types = field_types
         .iter()
-        .map(|tree| tree_to_datatype(tree))
-        .collect::<Vec<_>>();
-
-    let n_fields = fields_types.len();
-    let fields_enumerate = (0..n_fields).collect::<Vec<_>>();
-
-    let new_array = tree
-        .iter()
-        .map(|tree| tree_to_new_array(tree))
-        .collect::<Vec<_>>();
-
-    let push_array = tree
-        .iter()
-        .zip(fields_names.iter())
-        .map(|(tree, field_name)| tree_to_push(tree, *field_name))
-        .collect::<Vec<_>>();
+        .map(|field_type| quote_spanned!( field_type.span() => <#field_type as arrow2_derive::ArrowSerialize>::MutableArrayType))
+        .collect::<Vec<TokenStream>>();
 
     let generated = quote! {
         /// An analog to `
@@ -305,70 +129,265 @@ pub fn derive(input: &Input) -> TokenStream {
         /// ` with Struct of Arrow (SoA) layout
         #[allow(dead_code)]
         #other_derive
-        #visibility struct #name {
+        #visibility struct #mutable_array_name {
             #(
-                #[doc = #fields_doc]
-                #fields_names: #fields_types,
+                #[doc = #field_docs]
+                #field_names: #mutable_field_array_types,
             )*
+            data_type: arrow2::datatypes::DataType,
+            validity: Option<arrow2::bitmap::MutableBitmap>,
         }
 
-        impl #name {
+        impl #mutable_array_name {
             pub fn new() -> Self {
                 Self {
-                    #(#fields_names: #new_array,)*
+                    #(#field_names: <#field_types as arrow2_derive::ArrowSerialize>::MutableArrayType::default(),)*
+                    data_type: <#original_name as arrow2_derive::ArrowField>::data_type(),
+                    validity: None,
                 }
             }
+
+            pub fn fields() -> Vec<arrow2::datatypes::Field> {
+                vec![
+                    #(
+                        <#field_types as arrow2_derive::ArrowField>::field(#field_names_str),
+                    )*
+                ]
+            }
+
+            fn init_validity(&mut self) {
+                let mut validity = arrow2::bitmap::MutableBitmap::new();
+                validity.extend_constant(<Self as arrow2::array::MutableArray>::len(self), true);
+                validity.set(<Self as arrow2::array::MutableArray>::len(self) - 1, false);
+                self.validity = Some(validity)
+            }        
         }
 
-        impl Default for #name {
+        impl Default for #mutable_array_name {
             fn default() -> Self {
                 Self::new()
             }
         }
 
-        impl #name {
-            fn push(&mut self, item: #original_name) {
-                let #original_name {
-                    #(#fields_names,)*
-                } = item;
-                #(self.#fields_names.#push_array.unwrap();)*;
+        impl arrow2_derive::ArrowMutableArray for #mutable_array_name {
+            fn into_arc(self) -> std::sync::Arc<dyn arrow2::array::Array> {
+                std::sync::Arc::new(arrow2::array::StructArray::from(self)) as std::sync::Arc<dyn arrow2::array::Array>
+            }
+        }
+ 
+        impl<T> arrow2_derive::ArrowMutableArrayTryPushGeneric<T> for #mutable_array_name
+        where T: arrow2_derive::ArrowSerialize, Self: arrow2::array::TryPush<Option<T::SerializeOutput>>
+        {}
+        
+        impl arrow2::array::TryPush<Option<#original_name>> for #mutable_array_name {
+            fn try_push(&mut self, item: Option<#original_name>) -> arrow2::error::Result<()> {
+                use arrow2::array::MutableArray;
+
+                match item {
+                    Some(i) =>  {
+                        let #original_name {
+                            #(#field_names,)*
+                        } = i;
+                        #(
+                            <#mutable_field_array_types as arrow2_derive::ArrowMutableArrayTryPushGeneric<#field_types>>::try_push_generic(&mut self.#field_names, #field_names)?;
+                        )*;
+                        match &mut self.validity {
+                            Some(validity) => validity.push(true),
+                            None => {}
+                        }                     
+                    },
+                    None => {
+                        #(
+                            <#mutable_field_array_types as MutableArray>::push_null(&mut self.#field_names);
+                        )*;
+                        match &mut self.validity {
+                            Some(validity) => validity.push(false),
+                            None => {
+                                self.init_validity();
+                            }
+                        }        
+                    }
+                }
+                Ok(())
+            }
+        }
+
+        impl arrow2::array::TryExtend<Option<#original_name>> for #mutable_array_name {
+            fn try_extend<I: IntoIterator<Item = Option<#original_name>>>(&mut self, iter: I) -> Result<(), arrow2::error::ArrowError> {
+                use arrow2::array::TryPush;
+                for i in iter {
+                    self.try_push(i)?;
+                }
+                Ok(())
+            }
+        }
+
+        // TODO
+        impl arrow2::array::MutableArray for #mutable_array_name {
+            fn data_type(&self) -> &arrow2::datatypes::DataType {
+                &self.data_type
             }
 
-            /*
-            // todo: need a "Slice" struct to not clone strings
-            fn value(&self, i: usize) -> #original_name {
-                #original_name {
-                    #(#fields_names: self.#fields_names,)*
+            fn len(&self) -> usize {
+                self.#first_field.len()
+            }
+        
+            fn validity(&self) -> Option<&arrow2::bitmap::MutableBitmap> {
+                self.validity.as_ref()
+            }
+        
+            fn as_box(&mut self) -> Box<dyn arrow2::array::Array> {
+                let values = vec![#(
+                    <#mutable_field_array_types as arrow2::array::MutableArray>::as_arc(&mut self.#field_names), 
+                )*];
+
+                Box::new(arrow2::array::StructArray::from_data(
+                    <#original_name as arrow2_derive::ArrowField>::data_type().clone(), 
+                    values, 
+                    std::mem::take(&mut self.validity).map(|x| x.into()),
+                ))
+            }
+        
+            fn as_arc(&mut self) -> std::sync::Arc<dyn arrow2::array::Array> {
+                let values = vec![#(
+                    <#mutable_field_array_types as arrow2::array::MutableArray>::as_arc(&mut self.#field_names), 
+                )*];
+
+                std::sync::Arc::new(arrow2::array::StructArray::from_data(
+                    <#original_name as arrow2_derive::ArrowField>::data_type().clone(), 
+                    values, 
+                    std::mem::take(&mut self.validity).map(|x| x.into())
+                ))
+            }
+                
+            fn as_any(&self) -> &dyn std::any::Any {
+                self
+            }
+        
+            fn as_mut_any(&mut self) -> &mut dyn std::any::Any {
+                self
+            }
+        
+            fn push_null(&mut self) {
+                <Self as arrow2_derive::ArrowMutableArrayTryPushGeneric<Option<#original_name>>>::try_push_generic(self, None).unwrap();
+            }
+        
+            fn shrink_to_fit(&mut self) {
+                #(
+                    <#mutable_field_array_types as arrow2::array::MutableArray>::shrink_to_fit(&mut self.#field_names);
+                )*
+                if let Some(validity) = &mut self.validity {
+                    validity.shrink_to_fit();
+                }        
+            }
+        }
+
+        impl From<#mutable_array_name> for arrow2::array::StructArray  {
+            fn from(other: #mutable_array_name) -> Self {
+                let values = vec![#(
+                    <#mutable_field_array_types as arrow2_derive::ArrowMutableArray>::into_arc(other.#field_names), 
+                )*];
+
+                let validity = if other.validity.as_ref().map(|x| x.null_count()).unwrap_or(0) > 0 {
+                    other.validity.map(|x| x.into())
+                } else {
+                    None
+                };        
+
+                arrow2::array::StructArray::from_data(
+                    <#original_name as arrow2_derive::ArrowField>::data_type(), 
+                    values, 
+                    validity
+                )
+            }
+        }
+
+        #[allow(dead_code)]
+        #visibility struct #array_name
+        {
+            array: Box<dyn arrow2::array::Array>
+        }
+
+        impl arrow2_derive::ArrowArray for #array_name 
+        {
+            type BaseArrayType = arrow2::array::StructArray;
+
+            fn iter_from_array_ref<'a>(b: &'a dyn arrow2::array::Array)  -> arrow2::error::Result<<&'a Self as IntoIterator>::IntoIter>
+            {
+                use core::ops::Deref;
+                let arr = b.as_any().downcast_ref::<arrow2::array::StructArray>().unwrap();
+                let values = arr.values();
+                // for now do a straight comp
+                Ok(#iterator_name {
+                    #(
+                        #field_names: <<#field_types as arrow2_derive::ArrowDeserialize>::ArrayType as arrow2_derive::ArrowArray>::iter_from_array_ref(values[#field_indices].deref())?, 
+                    )*        
+                })
+            }
+        }
+
+        impl<'a> IntoIterator for &'a #array_name 
+        {
+            type Item = Option<#original_name>;
+            type IntoIter = #iterator_name<'a>;
+
+            fn into_iter(self) -> Self::IntoIter {
+                unimplemented!("Use iter_from_array_ref");
+            }
+        }
+
+        #visibility struct #iterator_name<'a> {
+            #(
+                #field_names: <&'a <#field_types as arrow2_derive::ArrowDeserialize>::ArrayType as IntoIterator>::IntoIter, 
+            )*
+        }
+
+        impl<'a> Iterator for #iterator_name<'a> {
+            type Item = Option<#original_name>;
+
+            fn next(&mut self) -> Option<Self::Item> {
+                if let (#(
+                    Some(#field_names),
+                )*) = ( 
+                    #(self.#field_names.next(),)* 
+                )
+                {
+                    Some(Some(#original_name {
+                        #(#field_names: <#field_types as arrow2_derive::ArrowDeserialize>::arrow_deserialize_internal(#field_names),)*
+                    }))
+                }
+                else {
+                    None
                 }
             }
-            */
         }
 
-        impl From<#name> for StructArray  {
-            fn from(other: #name) -> Self {
-                let fields = (0..#name::n_fields())
-                    .map(#name::field)
-                    .collect();
-                // to macro
-                let #name { #(#fields_names, )* } = other;
-                let values = vec![#(#fields_names.into_arc(), )*];
-
-                StructArray::from_data(DataType::Struct(fields), values, None)
+        impl arrow2_derive::ArrowField for #original_name {
+            fn data_type() -> arrow2::datatypes::DataType {
+                arrow2::datatypes::DataType::Struct(
+                    #mutable_array_name::fields()
+                )
             }
         }
 
-        impl ArrowStruct for #name {
-            fn n_fields() -> usize {
-                #n_fields
-            }
+        impl arrow2_derive::ArrowSerialize for #original_name {
+            type MutableArrayType = #mutable_array_name;
+            type SerializeOutput = #original_name;
 
-            fn field(i: usize) -> Field {
-                match i {
-                    #(#fields_enumerate => Field::new(#fields_names_str, #fields_datatypes, #fields_nullable),)*
-                    _ => panic!(),
-                }
+            fn arrow_serialize(v: Option<Self>) -> Option<#original_name> {
+                v
             }
         }
+
+        impl arrow2_derive::ArrowDeserialize for #original_name {
+            type ArrayType = #array_name;
+
+            fn arrow_deserialize<'a>(v: Option<Self>) -> Option<Self> {
+                v
+            }
+        }
+
+        arrow2_derive::arrow_enable_vec_for_type!(#original_name);
     };
 
     generated
