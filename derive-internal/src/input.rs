@@ -64,7 +64,15 @@ impl Input {
         }
     }
 
-    pub fn vec_name(&self) -> Ident {
+    pub fn mutable_array_name(&self) -> Ident {
+        Ident::new(&format!("Mutable{}Array", self.name), Span::call_site())
+    }
+
+    pub fn array_name(&self) -> Ident {
         Ident::new(&format!("{}Array", self.name), Span::call_site())
+    }
+
+    pub fn iterator_name(&self) -> Ident {
+        Ident::new(&format!("{}ArrayIterator", self.name), Span::call_site())
     }
 }
