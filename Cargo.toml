@@ -1,7 +1,10 @@
 [package]
 name = "arrow2-derive"
 version = "0.1.0"
-authors = ["Jorge Leitao <jorgecarleitao@gmail.com>"]
+authors = [
+    "Jorge Leitao <jorgecarleitao@gmail.com>",
+    "Chandra Penke <chandrapenke@gmail.com>"
+]
 edition = "2018"
 license = "Apache-2.0 OR MIT"
 keywords = ["Arrow"]
