@@ -8,7 +8,7 @@ The following features are supported:
 
 - arrow2 primitive types can be used as struct fields.
     - numeric types: [`u8`], [`u16`], [`u32`], [`u64`], [`i8`], [`i16`], [`i32`], [`i64`], [`f32`], [`f64`]
-    - other types: [`bool`], [`String`]
+    - other types: [`bool`], [`String`], [`Binary`]
     - temporal types: [`chrono::NaiveDate`], [`chrono::NaiveDateTime`]
 - Custom types can be used as fields by implementing the ArrowField, ArrowSerialize, and ArrowDeserialize traits.
 - Optional fields: Option<T>.
@@ -75,13 +75,21 @@ To achieve this, the following approach is used.
 
 ### Why not serde?
 
-While, serde is the de-facto serialization framework for rust it introduces a layer of indirection that seemed unnecessary for the arrow2 framework. Specifically, arrow2 itself serves as an intermediate representation, which can be serialized/deserialized to a wide variety of formats including JSON, avro, etc, so it seemed conceptually more straightforward to have the derive functionality to have much tighter coupling with arrow2.
+While serde is the de-facto serialization framework in Rust, it introduces a layer of indirection.
+Specifically, arrow2 uses Apache Arrow's in-memory columnar format, while serde is row based.
+Using serde as an intermediary would lead to an extra allocation per non-primitive type per item, which is very expensive.
 
-Also, one of the objectives of this crate is to derive a compile-time schema for rust structs, which requires an orthogonal approach to serde. This is achieved by the `ArrowField` trait. Other crates that integrate serde for example [serde_arrow](https://github.com/chmp/serde_arrow), either need an explicit schema or need to infer the schema at runtime.
+Arrow's in-memory format can be serialized/deserialized to a wide variety of formats including Apache Parquet, JSON, Apache Avro, Arrow IPC, and Arrow FFI specification.
+
+One of the objectives of this crate is to derive a compile-time Arrow schema for Rust structs, which we achieve via the `ArrowField` trait.
+Other crates that integrate serde for example [serde_arrow](https://github.com/chmp/serde_arrow), 
+either need an explicit schema or need to infer the schema at runtime.
 
 Lastly, the serde ecosystem comes with its own default representations for temporal times, that differ from the default representations of arrow2. It seemed best to avoid any conflicts by introducing a new set of traits.
 
-Probably, the biggest disadvantage of not using Serde is types in codebases which already implement serde traits, will need to additionally reimplement the traits needed by this crate. If this starts to become an issue, then we can look into introducing a serde adapter to leverage those implementations.
+The biggest disadvantage of not using Serde is for types in codebases that already implement serde traits.
+They will need to additionally reimplement the traits needed by this crate.
+If this starts to become an issue, then we can look into introducing a serde adapter to leverage those implementations.
 ## License
 
 Licensed under either of
