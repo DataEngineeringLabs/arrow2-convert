@@ -59,6 +59,13 @@ macro_rules! impl_numeric_type {
     };
 }
 
+macro_rules! impl_numeric_type_full {
+    ($physical_type:ty, $logical_type:ident) => {
+        impl_numeric_type!($physical_type, $logical_type);
+        arrow_enable_vec_for_type!($physical_type);
+    };
+}
+
 // blanket implementation for optional fields
 impl<T> ArrowField for Option<T>
 where T: ArrowField,
@@ -74,16 +81,17 @@ where T: ArrowField,
     }
 }
 
+// u8 does not get the full implementation since Vec<u8> and [u8] are considered binary.
 impl_numeric_type!(u8, UInt8);
-impl_numeric_type!(u16, UInt16);
-impl_numeric_type!(u32, UInt32);
-impl_numeric_type!(u64, UInt64);
-impl_numeric_type!(i8, Int8);
-impl_numeric_type!(i16, Int16);
-impl_numeric_type!(i32, Int32);
-impl_numeric_type!(i64, Int64);
-impl_numeric_type!(f32, Float32);
-impl_numeric_type!(f64, Float64);
+impl_numeric_type_full!(u16, UInt16);
+impl_numeric_type_full!(u32, UInt32);
+impl_numeric_type_full!(u64, UInt64);
+impl_numeric_type_full!(i8, Int8);
+impl_numeric_type_full!(i16, Int16);
+impl_numeric_type_full!(i32, Int32);
+impl_numeric_type_full!(i64, Int64);
+impl_numeric_type_full!(f32, Float32);
+impl_numeric_type_full!(f64, Float64);
 
 impl ArrowField for String
 {

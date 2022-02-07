@@ -1,165 +1,95 @@
 # Arrow2-derive - derive for Arrow2
 
-This crate allows writing a struct in Rust and have it derive
-a struct of arrays layed out in memory according to the arrow format.
+This crate enables converting between arrays of rust structures and the Arrow memory format as represented by arrow2 data structures. Specifically, it exposes a `ArrowStruct` derive macro, which can be used to annotate a structure to derive the following:
+- A arrow2::array::MutableArray, which is used for serialization, and converted to an arrow2::array::Array for use by the the rest of the Arrow/arrow2 ecosystem.
+- A typed arrow2::array::Array which can be used to deserialize back to the original array.
+
+The following features are supported:
+
+- arrow2 primitive types can be used as struct fields.
+    - numeric types: [`u8`], [`u16`], [`u32`], [`u64`], [`i8`], [`i16`], [`i32`], [`i64`], [`f32`], [`f64`]
+    - other types: [`bool`], [`String`], [`Binary`]
+    - temporal types: [`chrono::NaiveDate`], [`chrono::NaiveDateTime`]
+- Custom types can be used as fields by implementing the ArrowField, ArrowSerialize, and ArrowDeserialize traits.
+- Optional fields: Option<T>.
+- Deep nesting via nested structs, which derive the `ArrowStruct` macro or by Vec<T>.
+
+The following features are not yet supported. 
+
+- Nested optional structs Vec<Option<T>>
+- Rust enums, slices, references
+
+Note: This is not an exclusive list. Please see the repo issues for current work in progress. Please also feel free to add proposals for features that would be useful for your project.
+## Usage
+
+Below is a bare-bones example that does a round trip conversion of a struct with a single field. 
+
+Please see the [complex_example.rs](./tests/complex_example.rs) for usage of the full functionality.
 
 ```rust
 use arrow2::datatypes::{DataType, Field, TimeUnit};
-use arrow2::{array::*, record_batch::RecordBatch};
-use arrow2_derive::{IntoArrowStructArray, ArrowStruct};
-use chrono::naive::{NaiveDate, NaiveDateTime};
-use chrono::Timelike;
+use arrow2::array::Array;
+use arrow2_derive::{ArrowStruct,FromArrow,IntoArrow};
 
+// Annotate the struct with ArrowStruct
 #[derive(Debug, Clone, PartialEq, ArrowStruct)]
 #[arrow2_derive = "Debug"]
 pub struct Foo {
-    name: Option<String>,
-    is_deleted: bool,
-    a1: Option<f64>,
-    a2: i64,
-    // binary
-    a3: Option<Vec<u8>>,
-    // date32
-    a4: NaiveDate,
-    // timestamp(ns, None)
-    a5: NaiveDateTime,
-    // optional list array of optional strings
-    nullable_list: Option<Vec<Option<String>>>,
-    // optional list array of required strings
-    required_list: Vec<Option<String>>,
-    // newtypes, variants or structs that serialize to Arrow primitives can implement the Arrow2Primitive trait
-    newtype: CustomDecimal,
-}
-
-// Understand how unions are implemented. 
-// What are the use cases for performing these transformations?
-type CustomDecimal(Vec<u8>);
-
-impl Arrow2Primitive for CustomBinary 
-{
-    // need arrow primitive type name (should be string?)
-    fn type_name() -> &'static str {
-
-    }
-    // need conversion function
-
-}
-
-impl Foo {
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        name: Option<String>,
-        is_deleted: bool,
-        a1: Option<f64>,
-        a2: i64,
-        a3: Option<Vec<u8>>,
-        a4: NaiveDate,
-        a5: NaiveDateTime,
-        nullable_list: Option<Vec<Option<String>>>,
-        required_list: Vec<Option<String>>,
-    ) -> Self {
-        Self {
-            name,
-            is_deleted,
-            a1,
-            a2,
-            a3,
-            a4,
-            a5,
-            nullable_list,
-            required_list,
-        }
-    }
+    name: String,
 }
 
 #[test]
-fn new() {
+fn test() {
     // an item
-    let item = Foo::new(
-        Some("a".to_string()),
-        false,
-        Some(0.1),
-        1,
-        Some(b"aa".to_vec()),
-        NaiveDate::from_ymd(1970, 1, 2),
-        NaiveDateTime::from_timestamp(10000, 0),
-        None,
-        vec![Some("aa".to_string()), Some("bb".to_string())],
-    );
+    let original_array = vec![
+        Foo { name: "hello".to_string() },
+        Foo { name: "one more".to_string() },
+        Foo { name: "good bye".to_string() },
+    ];
 
-    let mut array = FooArray::default();
-    array.push(item);
+    // serialize to an arrow array. into_arrow() is enabled by the IntoArrow trait
+    let arrow_array: Box<dyn Array> = original_array.clone().into_arrow().unwrap();
 
-    // convert it to an Arrow array
-    let array: StructArray = array.into();
-    assert_eq!(array.len(), 1);
+    // which can be cast to an Arrow StructArray and be used for all kinds of IPC, FFI, etc. 
+    // supported by `arrow2`
+    let struct_array= arrow_array.as_any().downcast_ref::<arrow2::array::StructArray>().unwrap();
+    assert_eq!(struct_array.len(), 3);
 
-    // which will have a schema:
-    assert_eq!(
-        array.fields(),
-        &[
-            Field::new("name", DataType::Utf8, true),
-            Field::new("is_deleted", DataType::Boolean, false),
-            Field::new("a1", DataType::Float64, true),
-            Field::new("a2", DataType::Int64, false),
-            Field::new("a3", DataType::Binary, true),
-            Field::new("a4", DataType::Date32, false),
-            Field::new("a5", DataType::Timestamp(TimeUnit::Nanosecond, None), false),
-            Field::new(
-                "nullable_list",
-                DataType::List(Box::new(Field::new("item", DataType::Utf8, true))),
-                true
-            ),
-            Field::new(
-                "required_list",
-                DataType::List(Box::new(Field::new("item", DataType::Utf8, true))),
-                false
-            ),
-        ]
-    );
-
-    // `StructArray` can then be converted to arrow's `RecordBatch`
-    let batch: RecordBatch = array.into();
-    assert_eq!(batch.num_columns(), 9);
-    assert_eq!(batch.num_rows(), 1);
-
-    // which can be used in IPC, FFI, to parquet, analytics, etc.
+    // deserialize back to our original vector. from_arrow() is enabled by the FromArrow trait
+    let round_trip_array: Vec<Foo> = arrow_array.from_arrow().unwrap();
+    assert_eq!(round_trip_array, original_array);
 }
 ```
-
-In the example above, the derived struct is
-
-```rust
-#[derive(Default, Debug)]
-pub struct FooArray {
-    name: MutableUtf8Array<i32>,
-    is_deleted: MutableBooleanArray<i32>,
-    a1: MutablePrimitiveArray<f64>,
-    a2: MutablePrimitiveArray<i64>,
-    a3: MutableBinaryArray<i32>,
-    a4: MutablePrimitiveArray<i32>,
-    a5: MutablePrimitiveArray<i64>,
-    nullable_list: MutableListArray<i32, MutableUtf8Array<i32>>,
-    required_list: MutableListArray<i32, MutableUtf8Array<i32>>,
-    other_list: MutableListArray<i32, MutablePrimitiveArray<i32>>,
-}
-```
-
-`FooArray::push` lays data in memory according to the arrow spec and
-can be used for all kinds of IPC, FFI, etc. supported by `arrow2`.
 
 ## Implementation details
 
-The goal is to allow the Arrow memory model to be used by an existing rust type tree and to facilitate conversions, when needed. Ideally, for performance, if the arrow memory model or specifically the API provided by the arrow2 crate exactly matches the custom type tree, then no conversions should be performed.
+The goal is to allow the Arrow memory model to be used by an existing rust type tree and to facilitate type conversions, when needed. Ideally, for performance, if the arrow memory model or specifically the API provided by the arrow2 crate exactly matches the custom type tree, then no conversions should be performed.
 
 To achieve this, the following approach is used. 
 
 - Introduce three traits, `ArrowField`, `ArrowSerialize`, and `ArrowDeserialize` that can be implemented by types that can be represented in Arrow. Implementations are provided for the built-in arrow2` types, and custom implementations can be provided for other types.
 
-- Blanket implementations are provided for types that recursively contain types that implement the above traits eg. [`Option<T>`], [`Vec<T>`], [`Vec<Option<T>>`], [`Vec<Vec<Option<T>>>`], etc. The blanked implementation needs be enabled by the `arrow_enable_vec_for_type` macro on the primitive type.
+- Blanket implementations are provided for types that recursively contain types that implement the above traits eg. [`Option<T>`], [`Vec<T>`], [`Vec<Option<T>>`], [`Vec<Vec<Option<T>>>`], etc. The blanket implementation needs be enabled by the `arrow_enable_vec_for_type` macro on the primitive type. This explicit enabling is needed since Vec<u8> is a special type in Arrow, and implementation specialization is not yet supported in rust to allow blanket implementations to coexist with more specialized implementations.
 
-- The supporting trait [`crate::ArrowMutableArray`] is used for generic manipulation of [`arrow2::array::MutableArray`] implementations.. This trait is also implemented for mutable struct arrays generated by the derive macro.
+- Some additional supporting traits such as `ArrowMutableArrayTryPushGeneric` are used to workaround the unavailability of features like generic associated types.
 
+### Why not serde?
+
+While serde is the de-facto serialization framework in Rust, it introduces a layer of indirection.
+Specifically, arrow2 uses Apache Arrow's in-memory columnar format, while serde is row based.
+Using serde as an intermediary would lead to an extra allocation per non-primitive type per item, which is very expensive.
+
+Arrow's in-memory format can be serialized/deserialized to a wide variety of formats including Apache Parquet, JSON, Apache Avro, Arrow IPC, and Arrow FFI specification.
+
+One of the objectives of this crate is to derive a compile-time Arrow schema for Rust structs, which we achieve via the `ArrowField` trait.
+Other crates that integrate serde for example [serde_arrow](https://github.com/chmp/serde_arrow), 
+either need an explicit schema or need to infer the schema at runtime.
+
+Lastly, the serde ecosystem comes with its own default representations for temporal times, that differ from the default representations of arrow2. It seemed best to avoid any conflicts by introducing a new set of traits.
+
+The biggest disadvantage of not using Serde is for types in codebases that already implement serde traits.
+They will need to additionally reimplement the traits needed by this crate.
+If this starts to become an issue, then we can look into introducing a serde adapter to leverage those implementations.
 ## License
 
 Licensed under either of
