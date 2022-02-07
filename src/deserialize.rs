@@ -38,6 +38,7 @@ pub trait ArrowArray:
 {
     type BaseArrayType: Array;
 
+    // Returns a typed iterator to the underlying elements of the array from an untyped Array reference.
     fn iter_from_array_ref<'a>(b: &'a dyn Array)  -> arrow2::error::Result<<&'a Self as IntoIterator>::IntoIter>;
 }
 
@@ -72,8 +73,7 @@ macro_rules! impl_arrow_array {
 // blanket implementation for optional fields
 impl<T> ArrowDeserialize for Option<T>
 where T: ArrowDeserialize,
-    T::ArrayType: 'static + Array,
-    T::ArrayType: Array,
+    T::ArrayType: 'static + ArrowArray,
     for<'a> &'a T::ArrayType: IntoIterator,
 {
     type ArrayType = <T as ArrowDeserialize>::ArrayType;
@@ -163,7 +163,7 @@ where T: ArrowDeserialize + ArrowEnableVecForType + 'static,
         use std::ops::Deref;
         match v {
             Some(t) => {
-                arrow_array_deserialize_unchecked_iter(t.deref()).ok().map(|i| i.collect::<Vec<T>>())
+                arrow_array_deserialize_iter(t.deref()).ok().map(|i| i.collect::<Vec<T>>())
             }
             None => None
         }
@@ -191,7 +191,7 @@ where T: ArrowDeserialize + 'static,
             Err(arrow2::error::ArrowError::InvalidArgumentError("Data type mismatch".to_string()))
         }
         else {
-            Ok(arrow_array_deserialize_unchecked_iter(self)?.collect())
+            Ok(arrow_array_deserialize_iter(self)?.collect())
         }
     }
 }
@@ -218,9 +218,9 @@ where &'a dyn Array: FromArrow<T>
     }
 }
 
-/// Returns an iterator for elements from a [`arrow2::array::Array`]
+/// Internal helper to return an iterator for elements from a [`arrow2::array::Array`]. 
 /// Does not perform any schema checks.
-pub fn arrow_array_deserialize_unchecked_iter<'a, T>(b: &'a dyn arrow2::array::Array) -> arrow2::error::Result<impl Iterator<Item = T> + 'a>
+fn arrow_array_deserialize_iter<'a, T>(b: &'a dyn arrow2::array::Array) -> arrow2::error::Result<impl Iterator<Item = T> + 'a>
 where T: ArrowDeserialize + 'static,
     for<'b> &'b <T as ArrowDeserialize>::ArrayType: IntoIterator
 {    

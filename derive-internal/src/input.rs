@@ -53,12 +53,13 @@ impl Input {
 
     pub fn derive(&self) -> TokenStream {
         if self.derives.is_empty() {
-            TokenStream::new()
+            // Need to always derive Debug since arrow2::array::MutableArray requires it
+            quote!(#[derive(Debug)])
         } else {
             let derives = &self.derives;
             quote!(
                 #[derive(
-                    #(#derives,)*
+                    Debug,#(#derives,)*
                 )]
             )
         }
