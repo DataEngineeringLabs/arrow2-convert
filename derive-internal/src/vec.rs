@@ -127,7 +127,6 @@ pub fn derive(input: &Input) -> TokenStream {
         /// An analog to `
         #[doc = #vec_name_str]
         /// ` with Struct of Arrow (SoA) layout
-        #[allow(dead_code)]
         #other_derive
         #visibility struct #mutable_array_name {
             #(
@@ -213,7 +212,7 @@ pub fn derive(input: &Input) -> TokenStream {
         }
 
         impl arrow2::array::TryExtend<Option<#original_name>> for #mutable_array_name {
-            fn try_extend<I: IntoIterator<Item = Option<#original_name>>>(&mut self, iter: I) -> Result<(), arrow2::error::ArrowError> {
+            fn try_extend<I: IntoIterator<Item = Option<#original_name>>>(&mut self, iter: I) -> arrow2::error::Result<()> {
                 use arrow2::array::TryPush;
                 for i in iter {
                     self.try_push(i)?;
@@ -222,7 +221,6 @@ pub fn derive(input: &Input) -> TokenStream {
             }
         }
 
-        // TODO
         impl arrow2::array::MutableArray for #mutable_array_name {
             fn data_type(&self) -> &arrow2::datatypes::DataType {
                 &self.data_type
@@ -302,7 +300,6 @@ pub fn derive(input: &Input) -> TokenStream {
             }
         }
 
-        #[allow(dead_code)]
         #visibility struct #array_name
         {
             array: Box<dyn arrow2::array::Array>
@@ -317,11 +314,14 @@ pub fn derive(input: &Input) -> TokenStream {
                 use core::ops::Deref;
                 let arr = b.as_any().downcast_ref::<arrow2::array::StructArray>().unwrap();
                 let values = arr.values();
+                let validity = arr.validity();
                 // for now do a straight comp
                 Ok(#iterator_name {
                     #(
                         #field_names: <<#field_types as arrow2_derive::ArrowDeserialize>::ArrayType as arrow2_derive::ArrowArray>::iter_from_array_ref(values[#field_indices].deref())?, 
-                    )*        
+                    )*
+                    has_validity: validity.as_ref().is_some(),
+                    validity_iter: validity.as_ref().map(|x| x.iter()).unwrap_or_else(|| arrow2::bitmap::utils::BitmapIter::new(&[], 0, 0))
                 })
             }
         }
@@ -340,24 +340,42 @@ pub fn derive(input: &Input) -> TokenStream {
             #(
                 #field_names: <&'a <#field_types as arrow2_derive::ArrowDeserialize>::ArrayType as IntoIterator>::IntoIter, 
             )*
+            validity_iter: arrow2::bitmap::utils::BitmapIter<'a>,
+            has_validity: bool
         }
 
-        impl<'a> Iterator for #iterator_name<'a> {
-            type Item = Option<#original_name>;
-
-            fn next(&mut self) -> Option<Self::Item> {
+        impl<'a> #iterator_name<'a> {
+            fn return_next(&mut self) -> Option<#original_name> {
                 if let (#(
                     Some(#field_names),
                 )*) = ( 
                     #(self.#field_names.next(),)* 
                 )
                 {
-                    Some(Some(#original_name {
+                    Some(#original_name {
                         #(#field_names: <#field_types as arrow2_derive::ArrowDeserialize>::arrow_deserialize_internal(#field_names),)*
-                    }))
+                    })
                 }
                 else {
                     None
+                }
+            }
+
+            fn consume_next(&mut self) {
+                #(let _ = self.#field_names.next();)*
+            }
+        }
+
+        impl<'a> Iterator for #iterator_name<'a> {
+            type Item = Option<#original_name>;
+
+            fn next(&mut self) -> Option<Self::Item> {
+                if !self.has_validity {
+                    self.return_next().map(|y| Some(y))
+                }
+                else {
+                    let is_valid = self.validity_iter.next();
+                    is_valid.map(|x| if x { self.return_next() } else { self.consume_next(); None })      
                 }
             }
         }

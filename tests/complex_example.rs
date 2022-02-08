@@ -11,7 +11,6 @@
 use arrow2_derive::{ArrowField,ArrowStruct,ArrowSerialize,ArrowDeserialize,FromArrow,IntoArrow};
 
 #[derive(Debug, Clone, PartialEq, ArrowStruct)]
-#[arrow2_derive = "Debug"]
 pub struct Root {
     name: Option<String>,
     is_deleted: bool,
@@ -44,7 +43,6 @@ pub struct Root {
 }
 
 #[derive(Debug, Clone, PartialEq, ArrowStruct)]
-#[arrow2_derive = "Debug"]
 pub struct Child {
     a1: i64,
     a2: String,
@@ -53,7 +51,6 @@ pub struct Child {
 }
 
 #[derive(Debug, Clone, PartialEq, ArrowStruct)]
-#[arrow2_derive = "Debug"]
 pub struct ChildChild {
     a1: i32,
     bool_array: Vec<bool>,
@@ -193,6 +190,61 @@ fn test_round_trip() {
     assert_eq!(foo_array, original_array);
 }
 
+#[test]
+fn test_nested_optional_struct_array() {
+    use arrow2::array::*;
+    #[derive(Debug, Clone, ArrowStruct, PartialEq)]
+    struct Top {
+        child_array: Vec<Option<Child>>
+    }
+    #[derive(Debug, Clone, ArrowStruct, PartialEq)]
+    struct Child {
+        a1: i64,
+    }
+
+    let original_array = vec![
+        Top {
+            child_array: vec![
+                Some(Child { a1: 10 }), None, Some(Child { a1: 12 }), Some(Child { a1: 14 })
+            ]
+        },
+        Top {
+            child_array: vec![
+                None, None, None, None
+            ]
+        },
+        Top {
+            child_array: vec![
+                None, None, Some(Child { a1: 12 }), None
+            ]
+        },
+    ];
+
+    let b: Box<dyn Array> = original_array.clone().into_arrow().unwrap();
+    let round_trip: Vec<Top> = b.from_arrow().unwrap();
+    assert_eq!(original_array, round_trip);
+}
+
+#[test]
+fn test_schema_mismatch_error() {
+    use arrow2::array::*;
+    use arrow2::error::Result;
+
+    #[derive(Debug, Clone, ArrowStruct, PartialEq)]
+    struct S1 {
+        a: i64,
+    }
+    #[derive(Debug, Clone, ArrowStruct, PartialEq)]
+    struct S2 {
+        a: String,
+    }
+
+    let arr1 = vec![S1{a: 1}, S1{a: 2}];
+    let arr1: Box<dyn Array> = arr1.into_arrow().unwrap();
+
+    let result: Result<Vec<S2>> = arr1.from_arrow();
+    assert_eq!(result.is_err(), true);
+}
 
 #[test]
 fn test_schema()

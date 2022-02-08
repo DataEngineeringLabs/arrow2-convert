@@ -4,7 +4,6 @@ use arrow2::array::Array;
 use arrow2_derive::{ArrowStruct,FromArrow,IntoArrow};
 
 #[derive(Debug, Clone, PartialEq, ArrowStruct)]
-#[arrow2_derive = "Debug"]
 pub struct Foo {
     name: String,
 }

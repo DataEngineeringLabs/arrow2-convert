@@ -1,8 +1,8 @@
 # Arrow2-derive - derive for Arrow2
 
 This crate enables converting between arrays of rust structures and the Arrow memory format as represented by arrow2 data structures. Specifically, it exposes a `ArrowStruct` derive macro, which can be used to annotate a structure to derive the following:
-- A arrow2::array::MutableArray, which is used for serialization, and converted to an arrow2::array::Array for use by the the rest of the Arrow/arrow2 ecosystem.
-- A typed arrow2::array::Array which can be used to deserialize back to the original array.
+- A arrow2::array::MutableArray, which is used for serialization, and converted to an arrow2::array::Array/arrow2::array::StructArray for use by the the rest of the Arrow/arrow2 ecosystem.
+- A typed iterator and deserialization logic over a arrow2::array::StructArray which can be used to deserialize back to the original array.
 
 The following features are supported:
 
@@ -16,7 +16,6 @@ The following features are supported:
 
 The following features are not yet supported. 
 
-- Nested optional structs Vec<Option<T>>
 - Rust enums, slices, references
 
 Note: This is not an exclusive list. Please see the repo issues for current work in progress. Please also feel free to add proposals for features that would be useful for your project.
