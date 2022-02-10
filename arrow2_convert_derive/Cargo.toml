@@ -1,0 +1,21 @@
+[package]
+name = "arrow2_convert_derive"
+version = "0.1.0"
+authors = [
+    "Jorge Leitao <jorgecarleitao@gmail.com>",
+    "Chandra Penke <chandrapenke@gmail.com>"
+]
+edition = "2021"
+license = "Apache-2.0 OR MIT"
+keywords = ["Arrow", "arrow2"]
+repository = "https://github.com/DataEngineeringLabs/arrow2-derive/arrow2_convert_derive"
+description = "Proc macros for arrow2_convert"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "1", features=["full"] }
+quote = "1"
+proc-macro2 = "1"
+proc-macro-error = { version = "1" }
