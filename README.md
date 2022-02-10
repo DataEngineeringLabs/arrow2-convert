@@ -26,19 +26,16 @@ Below is a bare-bones example that does a round trip conversion of a struct with
 Please see the [complex_example.rs](./tests/complex_example.rs) for usage of the full functionality.
 
 ```rust
-use arrow2::datatypes::{DataType, Field, TimeUnit};
 use arrow2::array::Array;
 use arrow2_derive::{ArrowStruct,FromArrow,IntoArrow};
 
-// Annotate the struct with ArrowStruct
 #[derive(Debug, Clone, PartialEq, ArrowStruct)]
-#[arrow2_derive = "Debug"]
 pub struct Foo {
     name: String,
 }
 
 #[test]
-fn test() {
+fn test_simple_roundtrip() {
     // an item
     let original_array = vec![
         Foo { name: "hello".to_string() },
@@ -49,7 +46,7 @@ fn test() {
     // serialize to an arrow array. into_arrow() is enabled by the IntoArrow trait
     let arrow_array: Box<dyn Array> = original_array.clone().into_arrow().unwrap();
 
-    // which can be cast to an Arrow StructArray and be used for all kinds of IPC, FFI, etc. 
+    // which can be cast to an Arrow StructArray and be used for all kinds of IPC, FFI, etc.
     // supported by `arrow2`
     let struct_array= arrow_array.as_any().downcast_ref::<arrow2::array::StructArray>().unwrap();
     assert_eq!(struct_array.len(), 3);

@@ -3,7 +3,7 @@ use arrow2::array::*;
 use chrono::{NaiveDate,NaiveDateTime};
 use std::sync::Arc;
 
-use crate::*;
+use crate::field::{ArrowField,ArrowEnableVecForType};
 
 /// Trait that is implemented by all types that are serializable to Arrow.
 /// 
@@ -11,34 +11,13 @@ use crate::*;
 /// if T implements ArrowSerialize. 
 /// 
 /// Note that Vec<T> implementation needs to be enabled by the [`crate::arrow_enable_vec_for_type`] macro.
-/// 
-/// Design notes:
-/// 
-/// The [`ArrowSerialize::SerializeOutput`] need to be manually specified for now, since the doesn't
-/// seem to be a way to specify bounds on the output of [`arrow_serialize`]. Alternately, if generic
-/// associated types were available, it could be specified as part of the [`ArrowMutableArray`] 
-/// implementation.
-pub trait ArrowSerialize: ArrowField + Sized
-    where Self::MutableArrayType: ArrowMutableArray
-        + arrow2::array::TryPush<Option<Self::SerializeOutput>>
-        + arrow2::array::TryExtend<Option<Self::SerializeOutput>>
+pub trait ArrowSerialize: ArrowField
 {
     /// The [`arrow2::array::MutableArray`] that holds this value
-    type MutableArrayType;
-    /// The output of [`arrow_serialize`] in a type that the [`MutableArrayType`] can accept
-    type SerializeOutput;
-
+    type MutableArrayType: ArrowMutableArray;
+ 
     /// Serialize this field to arrow
-    fn arrow_serialize(v: Option<Self>) -> Option<Self::SerializeOutput>;  
-
-    /// Internal
-    /// A hack for consistency with deserialize so that users can consistently implement
-    /// serialize/deserialize that use Option<T> for both input and output
-    #[doc(hidden)]
-    #[inline]
-    fn arrow_serialize_internal(v: Self) -> Option<Self::SerializeOutput> {
-        Self::arrow_serialize(Some(v))
-    }
+    fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()>;
 }
 
 /// This trait provides an interface that's exposed by all Mutable lists but that are not 
@@ -51,34 +30,7 @@ pub trait ArrowMutableArray:
     arrow2::array::MutableArray
     + Default
 {
-    // Convert the array into the arc type
-    fn into_arc(self) -> Arc<dyn Array>;
-}
-
-/// This trait provides an interface that's used to implement type-specific push
-/// on the individual mutable arrays.
-/// 
-/// Implementations of this trait are provided for all mutable arrays provided by
-/// [`arrow2`].
-#[doc(hidden)]
-pub trait ArrowMutableArrayTryPushGeneric<T>: ArrowMutableArray
-where T: ArrowSerialize,
-    Self: arrow2::array::TryPush<Option<T::SerializeOutput>>,
-{
-    #[inline]
-    fn try_push_generic(&mut self, t: T) -> arrow2::error::Result<()> {
-        <Self as arrow2::array::TryPush<Option<T::SerializeOutput>>>::try_push(self, <T as ArrowSerialize>::arrow_serialize_internal(t))
-    }
-
-    #[inline]
-    fn try_extend_generic<I>(&mut self, iter: I) -> arrow2::error::Result<()> 
-    where I: Iterator<Item = T>
-    {
-        for i in iter {
-            <Self as ArrowMutableArrayTryPushGeneric<T>>::try_push_generic(self, i)?;
-        }
-        Ok(())
-    }
+    fn reserve(&mut self, additional: usize, additional_values: usize);
 }
 
 // Macro to facilitate implementation of serializable traits for numeric types and numeric mutable arrays.
@@ -86,21 +38,16 @@ macro_rules! impl_numeric_type {
     ($physical_type:ty, $logical_type:ident) => {
         impl ArrowSerialize for $physical_type {
             type MutableArrayType = MutablePrimitiveArray<$physical_type>;
-            type SerializeOutput = $physical_type;
 
             #[inline]
-            fn arrow_serialize(v: Option<Self>) -> Option<$physical_type> {
-                v
+            fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+                array.try_push(Some(*v))
             }
         }
 
         impl ArrowMutableArray for MutablePrimitiveArray<$physical_type> {
             impl_mutable_array_body!();
         }
-
-        impl<T> ArrowMutableArrayTryPushGeneric<T> for MutablePrimitiveArray<$physical_type>
-        where T: ArrowSerialize, Self: arrow2::array::TryPush<Option<T::SerializeOutput>>
-        {}
     };
 }
 
@@ -108,8 +55,8 @@ macro_rules! impl_numeric_type {
 macro_rules! impl_mutable_array_body {
     () => {
         #[inline]
-        fn into_arc(self) -> Arc<dyn Array> {
-            Self::into_arc(self)
+        fn reserve(&mut self, additional: usize, _additional_values: usize) {
+            self.reserve(additional);
         }
     };
 }
@@ -119,18 +66,12 @@ impl<T> ArrowSerialize for Option<T>
 where T: ArrowSerialize
 {
     type MutableArrayType = <T as ArrowSerialize>::MutableArrayType;
-    type SerializeOutput = <T as ArrowSerialize>::SerializeOutput;
 
     #[inline]
-    fn arrow_serialize_internal(v: Self) -> Option<<T as ArrowSerialize>::SerializeOutput> {
-        <T as ArrowSerialize>::arrow_serialize(v)
-    }
-
-    #[inline]
-    fn arrow_serialize(v: Option<Self>) -> Option<<T as ArrowSerialize>::SerializeOutput> {
-        match v {
-            Some(t) => Self::arrow_serialize_internal(t),
-            None => None
+    fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+        match v.as_ref() {
+            Some(t) => { <T as ArrowSerialize>::arrow_serialize(t, array) },
+            None => { array.push_null(); Ok(()) },
         }
     }
 }
@@ -149,72 +90,98 @@ impl_numeric_type!(f64, Float64);
 impl ArrowSerialize for String
 {
     type MutableArrayType = MutableUtf8Array<i32>;
-    type SerializeOutput = String;
 
     #[inline]
-    fn arrow_serialize(v: Option<Self>) -> Option<String> {
-        v
+    fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+        array.try_push(Some(v))
+    }
+}
+
+impl ArrowSerialize for str
+{
+    type MutableArrayType = MutableUtf8Array<i32>;
+
+    #[inline]
+    fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+        array.try_push(Some(v))
     }
 }
 
 impl ArrowSerialize for bool
 {
     type MutableArrayType = MutableBooleanArray;
-    type SerializeOutput = bool;
 
     #[inline]
-    fn arrow_serialize(v: Option<Self>) -> Option<bool> {
-        v
+    fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+        array.try_push(Some(*v))
     }
 }
 
 impl ArrowSerialize for NaiveDateTime
 {
     type MutableArrayType = MutablePrimitiveArray<i64>;
-    type SerializeOutput = i64;
 
     #[inline]
-    fn arrow_serialize(v: Option<Self>) -> Option<i64> {
-        v.map(|t| t.timestamp_nanos())
+    fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+        array.try_push(Some(v.timestamp_nanos()))
     }
 }
 
 impl ArrowSerialize for NaiveDate
 {
     type MutableArrayType = MutablePrimitiveArray<i32>;
-    type SerializeOutput = i32;
 
     #[inline]
-    fn arrow_serialize(v: Option<Self>) -> Option<i32> {
-        v.map(|t| (chrono::Datelike::num_days_from_ce(&t) - arrow2::temporal_conversions::EPOCH_DAYS_FROM_CE))
+    fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+        array.try_push(Some(chrono::Datelike::num_days_from_ce(v) - arrow2::temporal_conversions::EPOCH_DAYS_FROM_CE))
     }
 }
 
 impl ArrowSerialize for Vec<u8> {
     type MutableArrayType = MutableBinaryArray<i32>;
-    type SerializeOutput = Vec<u8>;
 
     #[inline]
-    fn arrow_serialize(v: Option<Self>) -> Option<Vec<u8>> {
-        v
+    fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+        array.try_push(Some(v))
+    }
+}
+
+impl ArrowSerialize for [u8] {
+    type MutableArrayType = MutableBinaryArray<i32>;
+
+    #[inline]
+    fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+        array.try_push(Some(v))
     }
 }
 
 // Blanket implementation for Vec
 impl<T> ArrowSerialize for Vec<T>
-where T: ArrowSerialize + ArrowEnableVecForType + 'static,
-    T::MutableArrayType: arrow2::array::TryPush<Option<T::SerializeOutput>>,
-    T::MutableArrayType: arrow2::array::TryExtend<Option<T::SerializeOutput>>
+where T: ArrowSerialize + ArrowEnableVecForType + 'static
 {
     type MutableArrayType = MutableListArray<i32, <T as ArrowSerialize>::MutableArrayType>;
-    type SerializeOutput = Vec<Option<T::SerializeOutput>>;
 
-    fn arrow_serialize(_v: Option<Self>) -> Option<Self::SerializeOutput> {
-        // This is intentionally unimplemented, since for nested lists we recursively
-        // push directly to arrow2's mutable arrays via try_push_generic, and do not
-        // go through the arrow_serialize path. See blanket implementation of
-        // ArrowMutableArrayTryPushGeneric for Vec<T>
-        unimplemented!()
+    fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+        let values = array.mut_values();
+        for i in v.iter() {
+            <T as ArrowSerialize>::arrow_serialize(i, values)?;
+        }
+        array.try_push_valid()
+    }
+}
+
+// Blanket implementation for [T]
+impl<T> ArrowSerialize for [T]
+where T: ArrowSerialize + ArrowEnableVecForType + 'static
+{
+    type MutableArrayType = MutableListArray<i32, <T as ArrowSerialize>::MutableArrayType>;
+
+    fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+        let values = array.mut_values();
+        for i in v.iter() {
+            <T as ArrowSerialize>::arrow_serialize(i, values)?;
+        }
+        array.try_push_valid()
     }
 }
 
@@ -222,79 +189,36 @@ impl ArrowMutableArray for MutableBooleanArray {
     impl_mutable_array_body!();
 }
 
-// Blanket implementation for all types that are accepted by MutableBooleanArray
-impl<T> ArrowMutableArrayTryPushGeneric<T> for MutableBooleanArray
-where T: ArrowSerialize, Self: arrow2::array::TryPush<Option<T::SerializeOutput>>
-{}
-
 impl ArrowMutableArray for MutableUtf8Array<i32>
 {
-    impl_mutable_array_body!();
+    #[inline]
+    fn reserve(&mut self, additional: usize, additional_values: usize) {
+        self.reserve(additional, additional_values);
+    }
 }
-
-// Blanket implementation for all types that are accepted by arrow2::MutableUtf8Array
-impl<T> ArrowMutableArrayTryPushGeneric<T> for MutableUtf8Array<i32>
-where T: ArrowSerialize, 
-    Self: arrow2::array::TryPush<Option<T::SerializeOutput>>
-{}
 
 impl ArrowMutableArray for MutableBinaryArray<i32>
 {
     impl_mutable_array_body!();
 }
 
-// Blanket implementation for all types that are accepted by arrow2::MutableBinaryArray
-impl<T> ArrowMutableArrayTryPushGeneric<T> for MutableBinaryArray<i32>
-where T: ArrowSerialize, Self: arrow2::array::TryPush<Option<T::SerializeOutput>>
-{}
-
 impl<M> ArrowMutableArray for MutableListArray<i32, M>
     where M: ArrowMutableArray + 'static
 {
-    impl_mutable_array_body!();
+    #[inline]
+    fn reserve(&mut self, _additional: usize, _additional_values: usize) {}
 }
 
-// Blanket implementation for Vec<T> to be pushed to a arrow2::MutableListArray
-impl<M, T> ArrowMutableArrayTryPushGeneric<Vec<T>> for MutableListArray<i32, M>
-where M: ArrowMutableArray 
-        + ArrowMutableArrayTryPushGeneric<T> 
-        + arrow2::array::TryPush<Option<T::SerializeOutput>> 
-        + arrow2::array::TryExtend<Option<T::SerializeOutput>> 
-        + 'static,
-    T: ArrowSerialize + ArrowEnableVecForType + 'static,
+// internal helper method to extend and serialize a mutable array
+fn arrow_serialize_and_extend<'a, T: ArrowSerialize + 'static, I: IntoIterator<Item = &'a T>>(
+    into_iter: I, array: &mut <T as ArrowSerialize>::MutableArrayType) -> arrow2::error::Result<()>
 {
-    fn try_push_generic(&mut self, t: Vec<T>) -> arrow2::error::Result<()>
-    {
-        let mut values = self.mut_values();
-        for i in t.into_iter() {
-            <M as ArrowMutableArrayTryPushGeneric<T>>::try_push_generic(&mut values, i)?;
-        }
-        self.try_push_valid()?;
-        Ok(())
+    let iter = into_iter.into_iter();
+    array.reserve(iter.size_hint().0, 0);
+    for i in iter {
+        <T as ArrowSerialize>::arrow_serialize(i, array)?;
     }
-}
-
-// Blanket implementation for Option<Vec<T>> to be pushed to a arrow2::MutableListArray
-impl<M, T> ArrowMutableArrayTryPushGeneric<Option<Vec<T>>> for MutableListArray<i32, M>
-where M: ArrowMutableArray 
-        + ArrowMutableArrayTryPushGeneric<T> 
-        + arrow2::array::TryPush<Option<T::SerializeOutput>> 
-        + arrow2::array::TryExtend<Option<T::SerializeOutput>> 
-        + 'static,
-    T: ArrowSerialize + ArrowEnableVecForType + 'static,
-{
-    fn try_push_generic(&mut self, t: Option<Vec<T>>) -> arrow2::error::Result<()>
-    {
-        match t {
-            Some(v) => {
-                <Self as ArrowMutableArrayTryPushGeneric<Vec<T>>>::try_push_generic(self, v)?;
-            },
-            None => {
-                <Self as MutableArray>::push_null(self);
-            }
-        }
-        Ok(())
-    }
+    Ok(())
 }
 
 /// Top-level API to serialize to Arrow
@@ -303,24 +227,24 @@ pub trait IntoArrow<T>
     fn into_arrow(self) -> arrow2::error::Result<T>;
 }
 
-impl<T> IntoArrow<Arc<dyn Array>> for Vec<T>
-where T: ArrowSerialize,
-    <T as ArrowSerialize>::MutableArrayType: ArrowMutableArrayTryPushGeneric<T>
+impl<'a, T, I> IntoArrow<Arc<dyn Array>> for I
+where T: ArrowSerialize + 'static,
+    I: IntoIterator<Item = &'a T>
 {
     fn into_arrow(self) -> arrow2::error::Result<Arc<dyn Array>> {
         let mut arr = <T as ArrowSerialize>::MutableArrayType::default();
-        <<T as ArrowSerialize>::MutableArrayType as ArrowMutableArrayTryPushGeneric<T>>::try_extend_generic(&mut arr, self.into_iter())?;
-        Ok(arr.into_arc())
+        arrow_serialize_and_extend(self, &mut arr)?;
+        Ok(arr.as_arc())
     }
 }
 
-impl<T> IntoArrow<Box<dyn Array>> for Vec<T>
-where T: ArrowSerialize,
-    <T as ArrowSerialize>::MutableArrayType: ArrowMutableArrayTryPushGeneric<T>
+impl<'a, T, I> IntoArrow<Box<dyn Array>> for I
+where T: ArrowSerialize + 'static,
+    I: IntoIterator<Item = &'a T>
 {
     fn into_arrow(self) -> arrow2::error::Result<Box<dyn Array>> {
         let mut arr = <T as ArrowSerialize>::MutableArrayType::default();
-        <<T as ArrowSerialize>::MutableArrayType as ArrowMutableArrayTryPushGeneric<T>>::try_extend_generic(&mut arr, self.into_iter())?;
+        arrow_serialize_and_extend(self, &mut arr)?;
         Ok(arr.as_box())
     }
 }

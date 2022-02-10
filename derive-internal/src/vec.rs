@@ -120,7 +120,7 @@ pub fn derive(input: &Input) -> TokenStream {
 
     let mutable_field_array_types = field_types
         .iter()
-        .map(|field_type| quote_spanned!( field_type.span() => <#field_type as arrow2_derive::ArrowSerialize>::MutableArrayType))
+        .map(|field_type| quote_spanned!( field_type.span() => <#field_type as arrow2_derive::serialize::ArrowSerialize>::MutableArrayType))
         .collect::<Vec<TokenStream>>();
 
     let generated = quote! {
@@ -140,8 +140,8 @@ pub fn derive(input: &Input) -> TokenStream {
         impl #mutable_array_name {
             pub fn new() -> Self {
                 Self {
-                    #(#field_names: <#field_types as arrow2_derive::ArrowSerialize>::MutableArrayType::default(),)*
-                    data_type: <#original_name as arrow2_derive::ArrowField>::data_type(),
+                    #(#field_names: <#field_types as arrow2_derive::serialize::ArrowSerialize>::MutableArrayType::default(),)*
+                    data_type: <#original_name as arrow2_derive::field::ArrowField>::data_type(),
                     validity: None,
                 }
             }
@@ -149,7 +149,7 @@ pub fn derive(input: &Input) -> TokenStream {
             pub fn fields() -> Vec<arrow2::datatypes::Field> {
                 vec![
                     #(
-                        <#field_types as arrow2_derive::ArrowField>::field(#field_names_str),
+                        <#field_types as arrow2_derive::field::ArrowField>::field(#field_names_str),
                     )*
                 ]
             }
@@ -168,27 +168,25 @@ pub fn derive(input: &Input) -> TokenStream {
             }
         }
 
-        impl arrow2_derive::ArrowMutableArray for #mutable_array_name {
-            fn into_arc(self) -> std::sync::Arc<dyn arrow2::array::Array> {
-                std::sync::Arc::new(arrow2::array::StructArray::from(self)) as std::sync::Arc<dyn arrow2::array::Array>
+        impl arrow2_derive::serialize::ArrowMutableArray for #mutable_array_name {
+            fn reserve(&mut self, additional: usize, _additional_values: usize) {
+                if let Some(x) = self.validity.as_mut() {
+                    x.reserve(additional)
+                }
+                #(<<#field_types as arrow2_derive::serialize::ArrowSerialize>::MutableArrayType as arrow2_derive::serialize::ArrowMutableArray>::reserve(&mut self.#field_names, additional, _additional_values);)*        
             }
         }
- 
-        impl<T> arrow2_derive::ArrowMutableArrayTryPushGeneric<T> for #mutable_array_name
-        where T: arrow2_derive::ArrowSerialize, Self: arrow2::array::TryPush<Option<T::SerializeOutput>>
-        {}
-        
-        impl arrow2::array::TryPush<Option<#original_name>> for #mutable_array_name {
-            fn try_push(&mut self, item: Option<#original_name>) -> arrow2::error::Result<()> {
+         
+        impl<T: std::borrow::Borrow<#original_name>> arrow2::array::TryPush<Option<T>> for #mutable_array_name {
+            fn try_push(&mut self, item: Option<T>) -> arrow2::error::Result<()> {
                 use arrow2::array::MutableArray;
+                use std::borrow::Borrow;
 
                 match item {
                     Some(i) =>  {
-                        let #original_name {
-                            #(#field_names,)*
-                        } = i;
+                        let i = i.borrow();
                         #(
-                            <#mutable_field_array_types as arrow2_derive::ArrowMutableArrayTryPushGeneric<#field_types>>::try_push_generic(&mut self.#field_names, #field_names)?;
+                            <#field_types as arrow2_derive::serialize::ArrowSerialize>::arrow_serialize(i.#field_names.borrow(), &mut self.#field_names)?;
                         )*;
                         match &mut self.validity {
                             Some(validity) => validity.push(true),
@@ -211,8 +209,8 @@ pub fn derive(input: &Input) -> TokenStream {
             }
         }
 
-        impl arrow2::array::TryExtend<Option<#original_name>> for #mutable_array_name {
-            fn try_extend<I: IntoIterator<Item = Option<#original_name>>>(&mut self, iter: I) -> arrow2::error::Result<()> {
+        impl<T: std::borrow::Borrow<#original_name>> arrow2::array::TryExtend<Option<T>> for #mutable_array_name {
+            fn try_extend<I: IntoIterator<Item = Option<T>>>(&mut self, iter: I) -> arrow2::error::Result<()> {
                 use arrow2::array::TryPush;
                 for i in iter {
                     self.try_push(i)?;
@@ -240,7 +238,7 @@ pub fn derive(input: &Input) -> TokenStream {
                 )*];
 
                 Box::new(arrow2::array::StructArray::from_data(
-                    <#original_name as arrow2_derive::ArrowField>::data_type().clone(), 
+                    <#original_name as arrow2_derive::field::ArrowField>::data_type().clone(), 
                     values, 
                     std::mem::take(&mut self.validity).map(|x| x.into()),
                 ))
@@ -252,7 +250,7 @@ pub fn derive(input: &Input) -> TokenStream {
                 )*];
 
                 std::sync::Arc::new(arrow2::array::StructArray::from_data(
-                    <#original_name as arrow2_derive::ArrowField>::data_type().clone(), 
+                    <#original_name as arrow2_derive::field::ArrowField>::data_type().clone(), 
                     values, 
                     std::mem::take(&mut self.validity).map(|x| x.into())
                 ))
@@ -267,7 +265,8 @@ pub fn derive(input: &Input) -> TokenStream {
             }
         
             fn push_null(&mut self) {
-                <Self as arrow2_derive::ArrowMutableArrayTryPushGeneric<Option<#original_name>>>::try_push_generic(self, None).unwrap();
+                use arrow2::array::TryPush;
+                self.try_push(None::<#original_name>).unwrap();
             }
         
             fn shrink_to_fit(&mut self) {
@@ -280,32 +279,12 @@ pub fn derive(input: &Input) -> TokenStream {
             }
         }
 
-        impl From<#mutable_array_name> for arrow2::array::StructArray  {
-            fn from(other: #mutable_array_name) -> Self {
-                let values = vec![#(
-                    <#mutable_field_array_types as arrow2_derive::ArrowMutableArray>::into_arc(other.#field_names), 
-                )*];
-
-                let validity = if other.validity.as_ref().map(|x| x.null_count()).unwrap_or(0) > 0 {
-                    other.validity.map(|x| x.into())
-                } else {
-                    None
-                };        
-
-                arrow2::array::StructArray::from_data(
-                    <#original_name as arrow2_derive::ArrowField>::data_type(), 
-                    values, 
-                    validity
-                )
-            }
-        }
-
         #visibility struct #array_name
         {
             array: Box<dyn arrow2::array::Array>
         }
 
-        impl arrow2_derive::ArrowArray for #array_name 
+        impl arrow2_derive::deserialize::ArrowArray for #array_name 
         {
             type BaseArrayType = arrow2::array::StructArray;
 
@@ -318,7 +297,7 @@ pub fn derive(input: &Input) -> TokenStream {
                 // for now do a straight comp
                 Ok(#iterator_name {
                     #(
-                        #field_names: <<#field_types as arrow2_derive::ArrowDeserialize>::ArrayType as arrow2_derive::ArrowArray>::iter_from_array_ref(values[#field_indices].deref())?, 
+                        #field_names: <<#field_types as arrow2_derive::deserialize::ArrowDeserialize>::ArrayType as arrow2_derive::deserialize::ArrowArray>::iter_from_array_ref(values[#field_indices].deref())?, 
                     )*
                     has_validity: validity.as_ref().is_some(),
                     validity_iter: validity.as_ref().map(|x| x.iter()).unwrap_or_else(|| arrow2::bitmap::utils::BitmapIter::new(&[], 0, 0))
@@ -338,7 +317,7 @@ pub fn derive(input: &Input) -> TokenStream {
 
         #visibility struct #iterator_name<'a> {
             #(
-                #field_names: <&'a <#field_types as arrow2_derive::ArrowDeserialize>::ArrayType as IntoIterator>::IntoIter, 
+                #field_names: <&'a <#field_types as arrow2_derive::deserialize::ArrowDeserialize>::ArrayType as IntoIterator>::IntoIter, 
             )*
             validity_iter: arrow2::bitmap::utils::BitmapIter<'a>,
             has_validity: bool
@@ -353,7 +332,7 @@ pub fn derive(input: &Input) -> TokenStream {
                 )
                 {
                     Some(#original_name {
-                        #(#field_names: <#field_types as arrow2_derive::ArrowDeserialize>::arrow_deserialize_internal(#field_names),)*
+                        #(#field_names: <#field_types as arrow2_derive::deserialize::ArrowDeserialize>::arrow_deserialize_internal(#field_names),)*
                     })
                 }
                 else {
@@ -380,7 +359,7 @@ pub fn derive(input: &Input) -> TokenStream {
             }
         }
 
-        impl arrow2_derive::ArrowField for #original_name {
+        impl arrow2_derive::field::ArrowField for #original_name {
             fn data_type() -> arrow2::datatypes::DataType {
                 arrow2::datatypes::DataType::Struct(
                     #mutable_array_name::fields()
@@ -388,16 +367,16 @@ pub fn derive(input: &Input) -> TokenStream {
             }
         }
 
-        impl arrow2_derive::ArrowSerialize for #original_name {
+        impl arrow2_derive::serialize::ArrowSerialize for #original_name {
             type MutableArrayType = #mutable_array_name;
-            type SerializeOutput = #original_name;
 
-            fn arrow_serialize(v: Option<Self>) -> Option<#original_name> {
-                v
+            fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+                use arrow2::array::TryPush;
+                array.try_push(Some(v))
             }
         }
 
-        impl arrow2_derive::ArrowDeserialize for #original_name {
+        impl arrow2_derive::deserialize::ArrowDeserialize for #original_name {
             type ArrayType = #array_name;
 
             fn arrow_deserialize<'a>(v: Option<Self>) -> Option<Self> {

@@ -1,9 +1,11 @@
 // Implementations of derive traits for arrow2 built-in types
 
+
 use arrow2::array::*;
 use chrono::{NaiveDate,NaiveDateTime};
+use std::iter::FromIterator;
 
-use crate::*;
+use crate::field::{ArrowField,ArrowEnableVecForType};
 
 /// Implemented by all arrow fields that can deserialize from arrow
 pub trait ArrowDeserialize: ArrowField + Sized
@@ -142,7 +144,7 @@ impl ArrowDeserialize for NaiveDate
     }
 }
 
-impl<'a> ArrowDeserialize for Vec<u8> {
+impl ArrowDeserialize for Vec<u8> {
     type ArrayType = BinaryArray<i32>;
 
     #[inline]
@@ -163,7 +165,7 @@ where T: ArrowDeserialize + ArrowEnableVecForType + 'static,
         use std::ops::Deref;
         match v {
             Some(t) => {
-                arrow_array_deserialize_iter(t.deref()).ok().map(|i| i.collect::<Vec<T>>())
+                arrow_array_deserialize_iterator_internal(t.deref()).ok().map(|i| i.collect::<Vec<T>>())
             }
             None => None
         }
@@ -175,55 +177,50 @@ impl_arrow_array!(Utf8Array<i32>);
 impl_arrow_array!(BinaryArray<i32>);
 impl_arrow_array!(ListArray<i32>);
 
-
 /// Top-level API to deserialize from Arrow
 pub trait FromArrow<T>
 {
     fn from_arrow(self) -> arrow2::error::Result<T>;
 }
 
-impl<'a,T> FromArrow<Vec<T>> for &'a dyn Array 
-where T: ArrowDeserialize + 'static, 
-    for<'b> &'b <T as ArrowDeserialize>::ArrayType: IntoIterator,
-{
-    fn from_arrow(self) -> arrow2::error::Result<Vec<T>> {
-        if &<T as ArrowField>::data_type() != self.data_type() {
-            Err(arrow2::error::ArrowError::InvalidArgumentError("Data type mismatch".to_string()))
-        }
-        else {
-            Ok(arrow_array_deserialize_iter(self)?.collect())
-        }
-    }
-}
 
-// Blanket implemented for Box<dyn Array>
-impl<'a, T> FromArrow<T> for &'a Box<dyn Array>
-where &'a dyn Array: FromArrow<T>
-{
-    fn from_arrow(self) -> arrow2::error::Result<T> {
-        use std::ops::Deref;
-
-        self.deref().from_arrow()
-    }
-}
-
-// Blanket implemented for Arc<dyn Array>
-impl<'a, T> FromArrow<T> for &'a std::sync::Arc<dyn Array>
-where &'a dyn Array: FromArrow<T>
-{
-    fn from_arrow(self) -> arrow2::error::Result<T> {
-        use std::ops::Deref;
-
-        self.deref().from_arrow()
-    }
-}
-
-/// Internal helper to return an iterator for elements from a [`arrow2::array::Array`]. 
-/// Does not perform any schema checks.
-fn arrow_array_deserialize_iter<'a, T>(b: &'a dyn arrow2::array::Array) -> arrow2::error::Result<impl Iterator<Item = T> + 'a>
+/// Helper to return an iterator for elements from a [`arrow2::array::Array`]. 
+fn arrow_array_deserialize_iterator_internal<'a, T>(b: &'a dyn arrow2::array::Array) -> arrow2::error::Result<impl Iterator<Item = T> + 'a>
 where T: ArrowDeserialize + 'static,
     for<'b> &'b <T as ArrowDeserialize>::ArrayType: IntoIterator
 {    
     Ok(<<T as ArrowDeserialize>::ArrayType as ArrowArray>::iter_from_array_ref(b)?
         .map(<T as ArrowDeserialize>::arrow_deserialize_internal))
+}
+
+/// Return an iterator that deserializes an arrow Array to an element of type T 
+pub fn arrow_array_deserialize_iterator<'a, T>(arr: &'a dyn arrow2::array::Array) -> arrow2::error::Result<impl Iterator<Item = T> + 'a>
+where T: ArrowDeserialize + 'static,
+    for<'b> &'b <T as ArrowDeserialize>::ArrayType: IntoIterator
+{    
+    if &<T as ArrowField>::data_type() != arr.data_type() {
+        Err(arrow2::error::ArrowError::InvalidArgumentError("Data type mismatch".to_string()))
+    }
+    else {
+        Ok(arrow_array_deserialize_iterator_internal(arr)?)
+    }
+}
+
+// Helper to collect into a FromIterator from an arrow array
+fn from_arrow_collect<I, T>(arr: &dyn Array) -> arrow2::error::Result<I>
+where T: ArrowDeserialize + 'static, 
+    for<'b> &'b <T as ArrowDeserialize>::ArrayType: IntoIterator,
+    I: FromIterator<T>,
+{
+    Ok(arrow_array_deserialize_iterator(arr)?.collect::<I>())
+}
+
+impl<'a, T, A> FromArrow<Vec<T>> for A
+where T: ArrowDeserialize + 'static, 
+    for<'b> &'b <T as ArrowDeserialize>::ArrayType: IntoIterator,
+    A: std::borrow::Borrow<dyn Array>
+{
+    fn from_arrow(self) -> arrow2::error::Result<Vec<T>> {
+        from_arrow_collect(self.borrow())
+    }
 }

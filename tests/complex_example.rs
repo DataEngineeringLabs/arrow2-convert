@@ -8,7 +8,7 @@
 /// We restrict the top-level bindings to arrow2_derive to test that the derive macro does
 /// not rely on other bindings and to ensure that it uses absolute paths to refer to other 
 /// types.
-use arrow2_derive::{ArrowField,ArrowStruct,ArrowSerialize,ArrowDeserialize,FromArrow,IntoArrow};
+use arrow2_derive::{field::ArrowField,ArrowStruct,serialize::{ArrowSerialize,IntoArrow},deserialize::{ArrowDeserialize,FromArrow, arrow_array_deserialize_iterator}};
 
 #[derive(Debug, Clone, PartialEq, ArrowStruct)]
 pub struct Root {
@@ -74,11 +74,11 @@ impl ArrowField for CustomType
 
 impl ArrowSerialize for CustomType {
     type MutableArrayType = arrow2::array::MutablePrimitiveArray<u64>;
-    type SerializeOutput = u64;
 
     #[inline]
-    fn arrow_serialize(v: Option<Self>) -> Option<u64> {
-        v.map(|t| t.0)
+    fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+        use arrow2::array::TryPush;
+        array.try_push(Some(v.0))
     }
 }
 
@@ -175,9 +175,9 @@ fn test_round_trip() {
     use arrow2::array::*;
 
     // serialize to an arrow array
-    let original_array = vec![item1(), item2()];
+    let original_array = [item1(), item2()];
 
-    let array: Box<dyn Array> = original_array.clone().into_arrow().unwrap();
+    let array: Box<dyn Array> = original_array.into_arrow().unwrap();
     let struct_array= array.as_any().downcast_ref::<arrow2::array::StructArray>().unwrap();
     assert_eq!(struct_array.len(), 2);
 
@@ -220,9 +220,29 @@ fn test_nested_optional_struct_array() {
         },
     ];
 
-    let b: Box<dyn Array> = original_array.clone().into_arrow().unwrap();
+    let b: Box<dyn Array> = original_array.into_arrow().unwrap();
     let round_trip: Vec<Top> = b.from_arrow().unwrap();
     assert_eq!(original_array, round_trip);
+}
+
+#[test]
+fn test_deserialize_iterator() {
+    use arrow2::array::*;
+    use std::borrow::Borrow;
+    #[derive(Debug, Clone, ArrowStruct, PartialEq)]
+    struct S {
+        a1: i64,
+    }
+
+    let original_array = [S {a1: 1}, S {a1: 100}, S {a1: 1000}];
+
+    let b: Box<dyn Array> = original_array.into_arrow().unwrap();
+
+    let iter = arrow_array_deserialize_iterator::<S>(b.borrow()).unwrap();
+
+    for (i, k) in iter.zip(original_array.iter()) {
+        assert_eq!(&i, k);
+    }
 }
 
 #[test]
@@ -253,7 +273,7 @@ fn test_schema()
     use arrow2::array::*;
 
     let original_array = vec![item1()];
-    let array: Box<dyn Array> = original_array.clone().into_arrow().unwrap();
+    let array: Box<dyn Array> = original_array.into_arrow().unwrap();
     let struct_array= array.as_any().downcast_ref::<arrow2::array::StructArray>().unwrap();
 
     assert_eq!(
