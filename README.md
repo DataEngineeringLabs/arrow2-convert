@@ -1,8 +1,6 @@
-# Arrow2-derive - derive for Arrow2
+# arrow2_convert
 
-This crate enables converting between arrays of rust structures and the Arrow memory format as represented by arrow2 data structures. Specifically, it exposes a `ArrowStruct` derive macro, which can be used to annotate a structure to derive the following:
-- A arrow2::array::MutableArray, which is used for serialization, and converted to an arrow2::array::Array/arrow2::array::StructArray for use by the the rest of the Arrow/arrow2 ecosystem.
-- A typed iterator and deserialization logic over a arrow2::array::StructArray which can be used to deserialize back to the original array.
+This crate provides convenience methods on top of [`arrow2`](https://github.com/jorgecarleitao/arrow2) to facilitate conversion between nested rust types and the Arrow memory format.  
 
 The following features are supported:
 
@@ -12,44 +10,62 @@ The following features are supported:
     - temporal types: [`chrono::NaiveDate`], [`chrono::NaiveDateTime`]
 - Custom types can be used as fields by implementing the ArrowField, ArrowSerialize, and ArrowDeserialize traits.
 - Optional fields: Option<T>.
-- Deep nesting via nested structs, which derive the `ArrowStruct` macro or by Vec<T>.
+- Deep nesting via structs which derive the `ArrowField` macro or by Vec<T>.
 
-The following features are not yet supported. 
+The following are not yet supported. 
 
 - Rust enums, slices, references
+- Large lists
 
-Note: This is not an exclusive list. Please see the repo issues for current work in progress. Please also feel free to add proposals for features that would be useful for your project.
-## Usage
+Note: This is not an exclusive list. Please see the repo issues for current work in progress and add proposals for features that would be useful for your project.
+
+## API
+
+The API is inspired by serde with the necessary modifications to generate a compile-time Arrow schema and to integrate with arrow2 data structures.
+
+Types (currently only structures) can be annotated with the `ArrowField` procedural macro to derive the following:
+
+- A typed `arrow2::array::MutableArray` for serialization
+- A typed iterator for deserialization
+- Implementations of the `ArrowField`, `ArrowSerialize`, and `ArrowDeserialize` traits.
+
+Serialization can be performed by using the `arrow_serialize` method or by manually pushing elements to the generated `arrow2::array::MutableArray`.
+
+Deserialization can be performed by using the `arrow_deserialize` method or by iterating through the iterator provided by `arrow_array_deserialize_iterator`.
+
+Both serialization and deserialization perform memory copies for the elements converted. For example, iterating through the deserialize iterator will copy memory from the arrow2 array, into the structure that the iterator returns. Deserialization can be more efficient by supporting structs with references.
+
+## Example
 
 Below is a bare-bones example that does a round trip conversion of a struct with a single field. 
 
-Please see the [complex_example.rs](./tests/complex_example.rs) for usage of the full functionality.
+Please see the [complex_example.rs](./arrow2_convert/tests/complex_example.rs) for usage of the full functionality.
 
 ```rust
-use arrow2::datatypes::{DataType, Field, TimeUnit};
-use arrow2::array::Array;
-use arrow2_derive::{ArrowStruct,FromArrow,IntoArrow};
+/// Simple example
 
-// Annotate the struct with ArrowStruct
-#[derive(Debug, Clone, PartialEq, ArrowStruct)]
-#[arrow2_derive = "Debug"]
+use arrow2::array::Array;
+use arrow2_convert_derive::{ArrowField};
+use arrow2_convert::{deserialize::FromArrow,serialize::IntoArrow};
+
+#[derive(Debug, Clone, PartialEq, ArrowField)]
 pub struct Foo {
     name: String,
 }
 
 #[test]
-fn test() {
+fn test_simple_roundtrip() {
     // an item
-    let original_array = vec![
+    let original_array = [
         Foo { name: "hello".to_string() },
         Foo { name: "one more".to_string() },
         Foo { name: "good bye".to_string() },
     ];
 
     // serialize to an arrow array. into_arrow() is enabled by the IntoArrow trait
-    let arrow_array: Box<dyn Array> = original_array.clone().into_arrow().unwrap();
+    let arrow_array: Box<dyn Array> = original_array.into_arrow().unwrap();
 
-    // which can be cast to an Arrow StructArray and be used for all kinds of IPC, FFI, etc. 
+    // which can be cast to an Arrow StructArray and be used for all kinds of IPC, FFI, etc.
     // supported by `arrow2`
     let struct_array= arrow_array.as_any().downcast_ref::<arrow2::array::StructArray>().unwrap();
     assert_eq!(struct_array.len(), 3);
@@ -70,13 +86,12 @@ To achieve this, the following approach is used.
 
 - Blanket implementations are provided for types that recursively contain types that implement the above traits eg. [`Option<T>`], [`Vec<T>`], [`Vec<Option<T>>`], [`Vec<Vec<Option<T>>>`], etc. The blanket implementation needs be enabled by the `arrow_enable_vec_for_type` macro on the primitive type. This explicit enabling is needed since Vec<u8> is a special type in Arrow, and implementation specialization is not yet supported in rust to allow blanket implementations to coexist with more specialized implementations.
 
-- Some additional supporting traits such as `ArrowMutableArrayTryPushGeneric` are used to workaround the unavailability of features like generic associated types.
+- Supporting traits to expose functionality not exposed via arrow2's traits.
 
 ### Why not serde?
 
 While serde is the de-facto serialization framework in Rust, it introduces a layer of indirection.
-Specifically, arrow2 uses Apache Arrow's in-memory columnar format, while serde is row based.
-Using serde as an intermediary would lead to an extra allocation per non-primitive type per item, which is very expensive.
+Specifically, arrow2 uses Apache Arrow's in-memory columnar format, while serde is row based. Using serde requires a Serializer/Deserializer implementation around each arrow2 MutableArray and Array, leading to a heavyweight wrapper around simple array manipulations.
 
 Arrow's in-memory format can be serialized/deserialized to a wide variety of formats including Apache Parquet, JSON, Apache Avro, Arrow IPC, and Arrow FFI specification.
 
@@ -88,7 +103,6 @@ Lastly, the serde ecosystem comes with its own default representations for tempo
 
 The biggest disadvantage of not using Serde is for types in codebases that already implement serde traits.
 They will need to additionally reimplement the traits needed by this crate.
-If this starts to become an issue, then we can look into introducing a serde adapter to leverage those implementations.
 ## License
 
 Licensed under either of

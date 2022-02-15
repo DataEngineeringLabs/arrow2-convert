@@ -14,19 +14,24 @@ use chrono::{NaiveDate,NaiveDateTime};
 /// 
 /// Serialize and Deserialize functionality requires implementing the [`crate::ArrowSerialize`] 
 /// and the [`crate::ArrowDeserialize`] traits respectively.
-pub trait ArrowField: Sized
+pub trait ArrowField
 {
-    /// The arrow data type. The default is the same as ArrowType
+    /// The arrow data type
     fn data_type() -> DataType;
 
     #[inline]
-    // for internal use
+    #[doc(hidden)]
+    /// For internal use and not meant to be reimplemented.
+    /// returns the [`arrow2::datatypes::Field`] for this field
     fn field(name: &str) -> Field {
         Field::new(name, Self::data_type(), Self::is_nullable())
     }
 
     #[inline]
-    // for internal use
+    #[doc(hidden)]
+    /// For internal use and not meant to be reimplemented.
+    /// Indicates that this field is nullable. This is reimplemented by the
+    /// Option<T> blanket implementation.
     fn is_nullable() -> bool {
         false
     }
@@ -40,7 +45,7 @@ pub trait ArrowField: Sized
 #[macro_export]
 macro_rules! arrow_enable_vec_for_type {
     ($t:ty) => {
-        impl $crate::ArrowEnableVecForType for $t {}
+        impl $crate::field::ArrowEnableVecForType for $t {}
     };
 }
 /// Marker used to allow [`Vec<T>`] to be used as a [`ArrowField`]. 
@@ -101,6 +106,14 @@ impl ArrowField for String
     }
 }
 
+impl ArrowField for str
+{
+    #[inline]
+    fn data_type() -> arrow2::datatypes::DataType {
+        arrow2::datatypes::DataType::Utf8
+    }
+}
+
 impl ArrowField for bool
 {
     #[inline]
@@ -132,8 +145,27 @@ impl ArrowField for Vec<u8> {
     }
 }
 
+impl ArrowField for [u8] {
+    #[inline]
+    fn data_type() -> arrow2::datatypes::DataType {
+        arrow2::datatypes::DataType::Binary
+    }
+}
+
 // Blanket implementation for Vec. 
 impl<T> ArrowField for Vec<T>
+where T: ArrowField + ArrowEnableVecForType
+{
+    #[inline]
+    fn data_type() -> arrow2::datatypes::DataType {
+        arrow2::datatypes::DataType::List(Box::new(
+            <T as ArrowField>::field("item"),
+        ))
+    }
+}
+
+// Blanket implementation for [T]. 
+impl<T> ArrowField for [T]
 where T: ArrowField + ArrowEnableVecForType
 {
     #[inline]
