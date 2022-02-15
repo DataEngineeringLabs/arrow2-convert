@@ -9,7 +9,7 @@ The following features are supported:
     - other types: [`bool`], [`String`], [`Binary`]
     - temporal types: [`chrono::NaiveDate`], [`chrono::NaiveDateTime`]
 - Custom types can be used as fields by implementing the ArrowField, ArrowSerialize, and ArrowDeserialize traits.
-- Optional fields: Option<T>.
+- Optional fields.
 - Deep nesting via structs which derive the `ArrowField` macro or by Vec<T>.
 
 The following are not yet supported. 
