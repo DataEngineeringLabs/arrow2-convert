@@ -34,7 +34,7 @@ fn test_simple_roundtrip() {
         .unwrap();
     assert_eq!(struct_array.len(), 3);
 
-    // deserialize back to our original vector
+    // deserialize back to our original vector via TryIntoIter trait.
     let round_trip_array: Vec<Foo> = arrow_array.try_into_iter().unwrap();
     assert_eq!(round_trip_array, original_array);
 }

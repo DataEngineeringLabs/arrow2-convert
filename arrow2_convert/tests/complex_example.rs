@@ -198,7 +198,7 @@ fn test_round_trip() -> arrow2::error::Result<()> {
     }
 
     // or can back to our original vector
-    let foo_array: Vec<Root> = array.try_into_iter().unwrap();
+    let foo_array: Vec<Root> = array.try_into_iter()?;
     assert_eq!(foo_array, original_array);
     Ok(())
 }
