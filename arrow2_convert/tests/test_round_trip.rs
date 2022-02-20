@@ -32,6 +32,6 @@ fn test_nested_optional_struct_array() {
     ];
 
     let b: Box<dyn Array> = original_array.into_arrow().unwrap();
-    let round_trip: Vec<Top> = b.from_arrow().unwrap();
+    let round_trip: Vec<Top> = b.try_into_iter().unwrap();
     assert_eq!(original_array, round_trip);
 }

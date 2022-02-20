@@ -41,6 +41,6 @@ fn test_deserialize_schema_mismatch_error() {
     let arr1 = vec![S1 { a: 1 }, S1 { a: 2 }];
     let arr1: Box<dyn Array> = arr1.into_arrow().unwrap();
 
-    let result: Result<Vec<S2>> = arr1.from_arrow();
+    let result: Result<Vec<S2>> = arr1.try_into_iter();
     assert!(result.is_err());
 }

@@ -1,5 +1,5 @@
 use arrow2::array::*;
-use arrow2_convert::deserialize::{arrow_array_deserialize_iterator, FromArrow};
+use arrow2_convert::deserialize::{arrow_array_deserialize_iterator, TryIntoIter};
 use arrow2_convert::serialize::IntoArrow;
 /// Complex example that uses the following features:
 ///
@@ -198,7 +198,7 @@ fn test_round_trip() -> arrow2::error::Result<()> {
     }
 
     // or can back to our original vector
-    let foo_array: Vec<Root> = array.from_arrow().unwrap();
+    let foo_array: Vec<Root> = array.try_into_iter().unwrap();
     assert_eq!(foo_array, original_array);
     Ok(())
 }

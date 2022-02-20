@@ -2,7 +2,6 @@
 
 use arrow2::array::*;
 use chrono::{NaiveDate, NaiveDateTime};
-use std::iter::FromIterator;
 
 use crate::field::{ArrowEnableVecForType, ArrowField};
 
@@ -182,8 +181,8 @@ impl_arrow_array!(BinaryArray<i32>);
 impl_arrow_array!(ListArray<i32>);
 
 /// Top-level API to deserialize from Arrow
-pub trait FromArrow<T> {
-    fn from_arrow(self) -> arrow2::error::Result<T>;
+pub trait TryIntoIter<T> {
+    fn try_into_iter(self) -> arrow2::error::Result<T>;
 }
 
 /// Helper to return an iterator for elements from a [`arrow2::array::Array`].
@@ -217,23 +216,13 @@ where
     }
 }
 
-// Helper to collect into a FromIterator from an arrow array
-fn from_arrow_collect<I, T>(arr: &dyn Array) -> arrow2::error::Result<I>
-where
-    T: ArrowDeserialize + 'static,
-    for<'b> &'b <T as ArrowDeserialize>::ArrayType: IntoIterator,
-    I: FromIterator<T>,
-{
-    Ok(arrow_array_deserialize_iterator(arr)?.collect::<I>())
-}
-
-impl<'a, T, A> FromArrow<Vec<T>> for A
+impl<'a, T, A> TryIntoIter<Vec<T>> for A
 where
     T: ArrowDeserialize + 'static,
     for<'b> &'b <T as ArrowDeserialize>::ArrayType: IntoIterator,
     A: std::borrow::Borrow<dyn Array>,
 {
-    fn from_arrow(self) -> arrow2::error::Result<Vec<T>> {
-        from_arrow_collect(self.borrow())
+    fn try_into_iter(self) -> arrow2::error::Result<Vec<T>> {
+        Ok(arrow_array_deserialize_iterator(self.borrow())?.collect())
     }
 }
