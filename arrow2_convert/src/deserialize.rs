@@ -5,7 +5,7 @@ use chrono::{NaiveDate, NaiveDateTime};
 
 use crate::field::{ArrowEnableVecForType, ArrowField};
 
-/// Implemented by any field that can be deserialized from arrow
+/// Implemented by [`ArrowField`] that can be deserialized from arrow
 pub trait ArrowDeserialize: ArrowField + Sized
 where
     Self::ArrayType: ArrowArray,
@@ -199,7 +199,7 @@ where
     )
 }
 
-/// Return an iterator that deserializes an arrow Array to an element of type T
+/// Return an iterator that deserializes an [`Array`] to an element of type T
 pub fn arrow_array_deserialize_iterator<'a, T>(
     arr: &'a dyn arrow2::array::Array,
 ) -> arrow2::error::Result<impl Iterator<Item = T> + 'a>

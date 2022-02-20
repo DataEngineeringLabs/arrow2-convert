@@ -1,22 +1,21 @@
 use arrow2::datatypes::{DataType, Field};
-use chrono::{NaiveDate,NaiveDateTime};
+use chrono::{NaiveDate, NaiveDateTime};
 
 /// Trait implemented by all types that can be used as an Arrow field.
-/// 
+///
 /// Implementations are provided for types already supported by the arrow2 crate:
 /// - numeric types: [`u8`], [`u16`], [`u32`], [`u64`], [`i8`], [`i16`], [`i32`], [`i64`], [`f32`], [`f64`]
 /// - other types: [`bool`], [`String`]
 /// - temporal types: [`chrono::NaiveDate`], [`chrono::NaiveDateTime`]
-/// 
+///
 /// Custom implementations can be provided for other types.
-/// 
+///
 /// The trait simply requires defining the [`ArrowField::data_type`]
-/// 
-/// Serialize and Deserialize functionality requires implementing the [`crate::ArrowSerialize`] 
+///
+/// Serialize and Deserialize functionality requires implementing the [`crate::ArrowSerialize`]
 /// and the [`crate::ArrowDeserialize`] traits respectively.
-pub trait ArrowField
-{
-    /// The arrow data type
+pub trait ArrowField {
+    /// The [`DataType`]
     fn data_type() -> DataType;
 
     #[inline]
@@ -37,9 +36,9 @@ pub trait ArrowField
     }
 }
 
-/// Enables the blanket implementations of [`Vec<T>`] as an Arrow field 
+/// Enables the blanket implementations of [`Vec<T>`] as an Arrow field
 /// if `T` is an Arrow field.
-/// 
+///
 /// This tag is needed for [`Vec<u8>`] specialization, and can be obviated
 /// once implementation specialization is available in rust.
 #[macro_export]
@@ -48,7 +47,7 @@ macro_rules! arrow_enable_vec_for_type {
         impl $crate::field::ArrowEnableVecForType for $t {}
     };
 }
-/// Marker used to allow [`Vec<T>`] to be used as a [`ArrowField`]. 
+/// Marker used to allow [`Vec<T>`] to be used as a [`ArrowField`].
 #[doc(hidden)]
 pub trait ArrowEnableVecForType {}
 
@@ -73,7 +72,8 @@ macro_rules! impl_numeric_type_full {
 
 // blanket implementation for optional fields
 impl<T> ArrowField for Option<T>
-where T: ArrowField,
+where
+    T: ArrowField,
 {
     #[inline]
     fn data_type() -> arrow2::datatypes::DataType {
@@ -98,40 +98,35 @@ impl_numeric_type_full!(i64, Int64);
 impl_numeric_type_full!(f32, Float32);
 impl_numeric_type_full!(f64, Float64);
 
-impl ArrowField for String
-{
+impl ArrowField for String {
     #[inline]
     fn data_type() -> arrow2::datatypes::DataType {
         arrow2::datatypes::DataType::Utf8
     }
 }
 
-impl ArrowField for str
-{
+impl ArrowField for str {
     #[inline]
     fn data_type() -> arrow2::datatypes::DataType {
         arrow2::datatypes::DataType::Utf8
     }
 }
 
-impl ArrowField for bool
-{
+impl ArrowField for bool {
     #[inline]
     fn data_type() -> arrow2::datatypes::DataType {
         arrow2::datatypes::DataType::Boolean
     }
 }
 
-impl ArrowField for NaiveDateTime
-{
+impl ArrowField for NaiveDateTime {
     #[inline]
     fn data_type() -> arrow2::datatypes::DataType {
         arrow2::datatypes::DataType::Timestamp(arrow2::datatypes::TimeUnit::Nanosecond, None)
     }
 }
 
-impl ArrowField for NaiveDate
-{
+impl ArrowField for NaiveDate {
     #[inline]
     fn data_type() -> arrow2::datatypes::DataType {
         arrow2::datatypes::DataType::Date32
@@ -152,27 +147,25 @@ impl ArrowField for [u8] {
     }
 }
 
-// Blanket implementation for Vec. 
+// Blanket implementation for Vec.
 impl<T> ArrowField for Vec<T>
-where T: ArrowField + ArrowEnableVecForType
+where
+    T: ArrowField + ArrowEnableVecForType,
 {
     #[inline]
     fn data_type() -> arrow2::datatypes::DataType {
-        arrow2::datatypes::DataType::List(Box::new(
-            <T as ArrowField>::field("item"),
-        ))
+        arrow2::datatypes::DataType::List(Box::new(<T as ArrowField>::field("item")))
     }
 }
 
-// Blanket implementation for [T]. 
+// Blanket implementation for [T].
 impl<T> ArrowField for [T]
-where T: ArrowField + ArrowEnableVecForType
+where
+    T: ArrowField + ArrowEnableVecForType,
 {
     #[inline]
     fn data_type() -> arrow2::datatypes::DataType {
-        arrow2::datatypes::DataType::List(Box::new(
-            <T as ArrowField>::field("item"),
-        ))
+        arrow2::datatypes::DataType::List(Box::new(<T as ArrowField>::field("item")))
     }
 }
 
@@ -183,11 +176,7 @@ arrow_enable_vec_for_type!(NaiveDate);
 arrow_enable_vec_for_type!(Vec<u8>);
 
 // Blanket implementation for Vec<Option<T>> if vectors are enabled for T
-impl<T> ArrowEnableVecForType for Option<T>
-where T: ArrowField + ArrowEnableVecForType
-{}
+impl<T> ArrowEnableVecForType for Option<T> where T: ArrowField + ArrowEnableVecForType {}
 
 // Blanket implementation for Vec<Vec<T>> if vectors are enabled for T
-impl<T> ArrowEnableVecForType for Vec<T>
-where T: ArrowField + ArrowEnableVecForType,
-{}
+impl<T> ArrowEnableVecForType for Vec<T> where T: ArrowField + ArrowEnableVecForType {}

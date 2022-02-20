@@ -70,8 +70,8 @@ fn test_simple_roundtrip() {
     let struct_array= arrow_array.as_any().downcast_ref::<arrow2::array::StructArray>().unwrap();
     assert_eq!(struct_array.len(), 3);
 
-    // deserialize back to our original vector. from_arrow() is enabled by the FromArrow trait
-    let round_trip_array: Vec<Foo> = arrow_array.from_arrow().unwrap();
+    // deserialize back to our original vector via TryIntoIter triat.
+    let round_trip_array: Vec<Foo> = arrow_array.try_into_iter().unwrap();
     assert_eq!(round_trip_array, original_array);
 }
 ```
@@ -80,7 +80,7 @@ fn test_simple_roundtrip() {
 
 The goal is to allow the Arrow memory model to be used by an existing rust type tree and to facilitate type conversions, when needed. Ideally, for performance, if the arrow memory model or specifically the API provided by the arrow2 crate exactly matches the custom type tree, then no conversions should be performed.
 
-To achieve this, the following approach is used. 
+To achieve this, the following approach is used:
 
 - Introduce three traits, `ArrowField`, `ArrowSerialize`, and `ArrowDeserialize` that can be implemented by types that can be represented in Arrow. Implementations are provided for the built-in arrow2` types, and custom implementations can be provided for other types.
 
