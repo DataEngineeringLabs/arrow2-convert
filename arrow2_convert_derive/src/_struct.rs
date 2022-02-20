@@ -277,20 +277,20 @@ pub fn expand_derive(input: &Input) -> TokenStream {
             {
                 type BaseArrayType = arrow2::array::StructArray;
 
-                fn iter_from_array_ref<'a>(b: &'a dyn arrow2::array::Array)  -> arrow2::error::Result<<&'a Self as IntoIterator>::IntoIter>
+                fn iter_from_array_ref<'a>(b: &'a dyn arrow2::array::Array)  -> <&'a Self as IntoIterator>::IntoIter
                 {
                     use core::ops::Deref;
                     let arr = b.as_any().downcast_ref::<arrow2::array::StructArray>().unwrap();
                     let values = arr.values();
                     let validity = arr.validity();
                     // for now do a straight comp
-                    Ok(#iterator_name {
+                    #iterator_name {
                         #(
-                            #field_names: <<#field_types as arrow2_convert::deserialize::ArrowDeserialize>::ArrayType as arrow2_convert::deserialize::ArrowArray>::iter_from_array_ref(values[#field_indices].deref())?, 
+                            #field_names: <<#field_types as arrow2_convert::deserialize::ArrowDeserialize>::ArrayType as arrow2_convert::deserialize::ArrowArray>::iter_from_array_ref(values[#field_indices].deref()), 
                         )*
                         has_validity: validity.as_ref().is_some(),
                         validity_iter: validity.as_ref().map(|x| x.iter()).unwrap_or_else(|| arrow2::bitmap::utils::BitmapIter::new(&[], 0, 0))
-                    })
+                    }
                 }
             }
 

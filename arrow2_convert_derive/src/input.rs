@@ -1,13 +1,13 @@
 use proc_macro2::Span;
-use syn::{Data, DeriveInput, Field, Ident, Lit, Meta, MetaNameValue, Visibility};
 use proc_macro_error::abort;
+use syn::{Data, DeriveInput, Field, Ident, Lit, Meta, MetaNameValue, Visibility};
 
 #[derive(PartialEq)]
 pub enum TraitsToDerive {
     FieldOnly,
     SerializeOnly,
     DeserializeOnly,
-    All
+    All,
 }
 
 /// Representing the struct we are deriving
@@ -28,7 +28,10 @@ impl Input {
 
         let fields = match input.data {
             Data::Struct(s) => s.fields.iter().cloned().collect::<Vec<_>>(),
-            _ => abort!(input.ident.span(), "#[derive(ArrowField)] only supports structs."),
+            _ => abort!(
+                input.ident.span(),
+                "#[derive(ArrowField)] only supports structs."
+            ),
         };
 
         let mut derives: Vec<Ident> = vec![];
@@ -45,23 +48,29 @@ impl Input {
                                     "field_only" | "serialize_only" | "deserialize_only" => {
                                         if traits_to_derive != TraitsToDerive::All {
                                             abort!(string.span(), "Only one of field_only, serialize-only or deserialize_only can be specified");
-                                        }                                    
+                                        }
 
                                         match value {
-                                            "field_only" => { traits_to_derive = TraitsToDerive::FieldOnly; },
-                                            "serialize_only" => { traits_to_derive = TraitsToDerive::SerializeOnly; },
-                                            "deserialize_only" => { traits_to_derive = TraitsToDerive::DeserializeOnly; },
-                                            _ => panic!("Unexpected {}", value) // intentionally leave as panic since we should never get here                   
+                                            "field_only" => {
+                                                traits_to_derive = TraitsToDerive::FieldOnly;
+                                            }
+                                            "serialize_only" => {
+                                                traits_to_derive = TraitsToDerive::SerializeOnly;
+                                            }
+                                            "deserialize_only" => {
+                                                traits_to_derive = TraitsToDerive::DeserializeOnly;
+                                            }
+                                            _ => panic!("Unexpected {}", value), // intentionally leave as panic since we should never get here
                                         }
-                                    },
-                                    _ => abort!(string.span(), "Unexpected {}", value)
+                                    }
+                                    _ => abort!(string.span(), "Unexpected {}", value),
                                 }
                                 derives.push(Ident::new(value.trim(), Span::call_site()));
                             }
                         }
-                        _ =>  { 
+                        _ => {
                             use syn::spanned::Spanned;
-                            abort!(meta.span(), "Unexpected attribute"); 
+                            abort!(meta.span(), "Unexpected attribute");
                         }
                     }
                 }
@@ -72,7 +81,7 @@ impl Input {
             name: input.ident,
             fields,
             visibility: input.vis,
-            traits_to_derive
+            traits_to_derive,
         }
     }
 
