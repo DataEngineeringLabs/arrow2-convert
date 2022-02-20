@@ -46,7 +46,7 @@ pub fn expand_derive(input: &Input) -> TokenStream {
         .map(|field| field.ident.as_ref().unwrap())
         .collect::<Vec<_>>();
 
-    if field_names.len() == 0 {
+    if field_names.is_empty() {
         abort!(original_name.span(), "Expected struct to have more than one field");
     }
 

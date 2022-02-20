@@ -29,9 +29,9 @@ Types (currently only structures) can be annotated with the `ArrowField` procedu
 - A typed iterator for deserialization
 - Implementations of the `ArrowField`, `ArrowSerialize`, and `ArrowDeserialize` traits.
 
-Serialization can be performed by using the `arrow_serialize` method or by manually pushing elements to the generated `arrow2::array::MutableArray`.
+Serialization can be performed by using the `arrow_serialize` method from the `IntoArrow` trait or by manually pushing elements to the generated `arrow2::array::MutableArray`.
 
-Deserialization can be performed by using the `arrow_deserialize` method or by iterating through the iterator provided by `arrow_array_deserialize_iterator`.
+Deserialization can be performed by using the `try_into_iter` method from the `TryIntoIterator` trait or by iterating through the iterator provided by `arrow_array_deserialize_iterator`.
 
 Both serialization and deserialization perform memory copies for the elements converted. For example, iterating through the deserialize iterator will copy memory from the arrow2 array, into the structure that the iterator returns. Deserialization can be more efficient by supporting structs with references.
 
@@ -70,8 +70,8 @@ fn test_simple_roundtrip() {
     let struct_array= arrow_array.as_any().downcast_ref::<arrow2::array::StructArray>().unwrap();
     assert_eq!(struct_array.len(), 3);
 
-    // deserialize back to our original vector. from_arrow() is enabled by the FromArrow trait
-    let round_trip_array: Vec<Foo> = arrow_array.from_arrow().unwrap();
+    // deserialize back to our original vector via TryIntoIter trait.
+    let round_trip_array: Vec<Foo> = arrow_array.try_into_iter().unwrap();
     assert_eq!(round_trip_array, original_array);
 }
 ```
@@ -80,7 +80,7 @@ fn test_simple_roundtrip() {
 
 The goal is to allow the Arrow memory model to be used by an existing rust type tree and to facilitate type conversions, when needed. Ideally, for performance, if the arrow memory model or specifically the API provided by the arrow2 crate exactly matches the custom type tree, then no conversions should be performed.
 
-To achieve this, the following approach is used. 
+To achieve this, the following approach is used:
 
 - Introduce three traits, `ArrowField`, `ArrowSerialize`, and `ArrowDeserialize` that can be implemented by types that can be represented in Arrow. Implementations are provided for the built-in arrow2` types, and custom implementations can be provided for other types.
 
