@@ -2,7 +2,7 @@ use arrow2::array::*;
 use arrow2::error::Result;
 use arrow2_convert::deserialize::*;
 use arrow2_convert::serialize::*;
-use arrow2_convert_derive::ArrowField;
+use arrow2_convert::ArrowField;
 
 #[test]
 fn test_deserialize_iterator() {

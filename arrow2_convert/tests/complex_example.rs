@@ -1,11 +1,12 @@
-use arrow2::array::*;
-use arrow2_convert::deserialize::{arrow_array_deserialize_iterator, TryIntoIter};
-use arrow2_convert::serialize::IntoArrow;
 /// Complex example that uses the following features:
 ///
 /// - Deeply Nested structs and lists
 /// - Custom types
-use arrow2_convert_derive::ArrowField;
+
+use arrow2::array::*;
+use arrow2_convert::deserialize::{arrow_array_deserialize_iterator, TryIntoIter};
+use arrow2_convert::serialize::IntoArrow;
+use arrow2_convert::ArrowField;
 use std::borrow::Borrow;
 
 #[derive(Debug, Clone, PartialEq, ArrowField)]

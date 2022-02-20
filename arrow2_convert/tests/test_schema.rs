@@ -1,5 +1,5 @@
 use arrow2::datatypes::*;
-use arrow2_convert_derive::ArrowField;
+use arrow2_convert::ArrowField;
 
 #[test]
 fn test_schema_types() {
