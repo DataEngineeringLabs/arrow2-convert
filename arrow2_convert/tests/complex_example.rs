@@ -1,13 +1,11 @@
+use arrow2::array::*;
+use arrow2_convert::deserialize::{arrow_array_deserialize_iterator, FromArrow};
+use arrow2_convert::serialize::IntoArrow;
 /// Complex example that uses the following features:
-/// 
+///
 /// - Deeply Nested structs and lists
 /// - Custom types
-
-
-use arrow2_convert_derive::{ArrowField};
-use arrow2_convert::deserialize::{FromArrow,arrow_array_deserialize_iterator};
-use arrow2_convert::serialize::IntoArrow;
-use arrow2::array::*;
+use arrow2_convert_derive::ArrowField;
 use std::borrow::Borrow;
 
 #[derive(Debug, Clone, PartialEq, ArrowField)]
@@ -47,14 +45,14 @@ pub struct Child {
     a1: i64,
     a2: String,
     // nested struct array
-    child_array: Vec<ChildChild>
+    child_array: Vec<ChildChild>,
 }
 
 #[derive(Debug, Clone, PartialEq, ArrowField)]
 pub struct ChildChild {
     a1: i32,
     bool_array: Vec<bool>,
-    int64_array: Vec<i64>
+    int64_array: Vec<i64>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -65,10 +63,13 @@ pub struct CustomType(u64);
 /// - ArrowField
 /// - ArrowSerialize
 /// - ArrowDeserialize
-impl arrow2_convert::field::ArrowField for CustomType
-{
+impl arrow2_convert::field::ArrowField for CustomType {
     fn data_type() -> arrow2::datatypes::DataType {
-        arrow2::datatypes::DataType::Extension("custom".to_string(), Box::new(arrow2::datatypes::DataType::UInt64), None)
+        arrow2::datatypes::DataType::Extension(
+            "custom".to_string(),
+            Box::new(arrow2::datatypes::DataType::UInt64),
+            None,
+        )
     }
 }
 
@@ -85,8 +86,8 @@ impl arrow2_convert::deserialize::ArrowDeserialize for CustomType {
     type ArrayType = arrow2::array::PrimitiveArray<u64>;
 
     #[inline]
-    fn arrow_deserialize<'a>(v: Option<&'a u64>) -> Option<Self> {
-        v.map(|t|CustomType(*t))
+    fn arrow_deserialize(v: Option<&u64>) -> Option<Self> {
+        v.map(|t| CustomType(*t))
     }
 }
 
@@ -94,7 +95,7 @@ impl arrow2_convert::deserialize::ArrowDeserialize for CustomType {
 arrow2_convert::arrow_enable_vec_for_type!(CustomType);
 
 fn item1() -> Root {
-    use chrono::{NaiveDate,NaiveDateTime};
+    use chrono::{NaiveDate, NaiveDateTime};
 
     Root {
         name: Some("a".to_string()),
@@ -105,7 +106,10 @@ fn item1() -> Root {
         a4: NaiveDate::from_ymd(1970, 1, 2),
         a5: NaiveDateTime::from_timestamp(10000, 0),
         a6: Some(NaiveDateTime::from_timestamp(10001, 0)),
-        date_time_list: vec![NaiveDateTime::from_timestamp(10000, 10), NaiveDateTime::from_timestamp(10000, 11)],
+        date_time_list: vec![
+            NaiveDateTime::from_timestamp(10000, 10),
+            NaiveDateTime::from_timestamp(10000, 11),
+        ],
         nullable_list: Some(vec![Some("cc".to_string()), Some("dd".to_string())]),
         required_list: vec![Some("aa".to_string()), Some("bb".to_string())],
         custom: CustomType(10),
@@ -115,19 +119,19 @@ fn item1() -> Root {
             a1: 10,
             a2: "hello".to_string(),
             child_array: vec![
-                ChildChild { 
+                ChildChild {
                     a1: 100,
                     bool_array: vec![false],
-                    int64_array: vec![45555, 2124214, 224, 24214, 2424]
+                    int64_array: vec![45555, 2124214, 224, 24214, 2424],
                 },
-                ChildChild { 
+                ChildChild {
                     a1: 101,
                     bool_array: vec![true, true, true],
-                    int64_array: vec![4533, 22222, 2323, 333, 33322]
+                    int64_array: vec![4533, 22222, 2323, 333, 33322],
                 },
-            ]
+            ],
         },
-        int32_array: vec![ 0, 1, 3 ]
+        int32_array: vec![0, 1, 3],
     }
 }
 
@@ -143,7 +147,10 @@ fn item2() -> Root {
         a4: NaiveDate::from_ymd(1970, 1, 2),
         a5: NaiveDateTime::from_timestamp(10000, 0),
         a6: None,
-        date_time_list: vec![NaiveDateTime::from_timestamp(10000, 10), NaiveDateTime::from_timestamp(10000, 11)],
+        date_time_list: vec![
+            NaiveDateTime::from_timestamp(10000, 10),
+            NaiveDateTime::from_timestamp(10000, 11),
+        ],
         nullable_list: None,
         required_list: vec![Some("ee".to_string()), Some("ff".to_string())],
         custom: CustomType(11),
@@ -153,29 +160,32 @@ fn item2() -> Root {
             a1: 11,
             a2: "hello again".to_string(),
             child_array: vec![
-                ChildChild { 
+                ChildChild {
                     a1: 100,
                     bool_array: vec![true, false, false, true],
-                    int64_array: vec![111111, 2222, 33]
+                    int64_array: vec![111111, 2222, 33],
                 },
-                ChildChild { 
+                ChildChild {
                     a1: 102,
                     bool_array: vec![false],
-                    int64_array: vec![45555, 2124214, 224, 24214, 2424]
+                    int64_array: vec![45555, 2124214, 224, 24214, 2424],
                 },
-            ]
+            ],
         },
-        int32_array: vec![ 111, 1 ]
+        int32_array: vec![111, 1],
     }
 }
 
 #[test]
-fn test_round_trip() {
+fn test_round_trip() -> arrow2::error::Result<()> {
     // serialize to an arrow array
     let original_array = [item1(), item2()];
 
-    let array: Box<dyn Array> = original_array.into_arrow().unwrap();
-    let struct_array= array.as_any().downcast_ref::<arrow2::array::StructArray>().unwrap();
+    let array: Box<dyn Array> = original_array.into_arrow()?;
+    let struct_array = array
+        .as_any()
+        .downcast_ref::<arrow2::array::StructArray>()
+        .unwrap();
     assert_eq!(struct_array.len(), 2);
 
     let values = struct_array.values();
@@ -183,11 +193,12 @@ fn test_round_trip() {
     assert_eq!(struct_array.len(), 2);
 
     // can iterate one struct at a time without collecting
-    for _i in  arrow_array_deserialize_iterator::<Root>(array.borrow()) {
+    for _i in arrow_array_deserialize_iterator::<Root>(array.borrow())? {
         // do something
     }
-    
+
     // or can back to our original vector
     let foo_array: Vec<Root> = array.from_arrow().unwrap();
     assert_eq!(foo_array, original_array);
+    Ok(())
 }

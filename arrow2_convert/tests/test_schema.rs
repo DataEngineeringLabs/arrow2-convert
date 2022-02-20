@@ -1,5 +1,5 @@
-use arrow2_convert_derive::ArrowField;
 use arrow2::datatypes::*;
+use arrow2_convert_derive::ArrowField;
 
 #[test]
 fn test_schema_types() {
@@ -40,14 +40,14 @@ fn test_schema_types() {
         a1: i64,
         a2: String,
         // nested struct array
-        child_array: Vec<ChildChild>
+        child_array: Vec<ChildChild>,
     }
 
     #[derive(Debug, ArrowField)]
     pub struct ChildChild {
         a1: i32,
         bool_array: Vec<bool>,
-        int64_array: Vec<i64>
+        int64_array: Vec<i64>,
     }
 
     // enable Vec<CustomType>
@@ -57,10 +57,13 @@ fn test_schema_types() {
     /// A newtype around a u64
     pub struct CustomType(u64);
 
-    impl arrow2_convert::field::ArrowField for CustomType
-    {
+    impl arrow2_convert::field::ArrowField for CustomType {
         fn data_type() -> arrow2::datatypes::DataType {
-            arrow2::datatypes::DataType::Extension("custom".to_string(), Box::new(arrow2::datatypes::DataType::UInt64), None)
+            arrow2::datatypes::DataType::Extension(
+                "custom".to_string(),
+                Box::new(arrow2::datatypes::DataType::UInt64),
+                None,
+            )
         }
     }
 
@@ -68,7 +71,10 @@ fn test_schema_types() {
         type MutableArrayType = arrow2::array::MutablePrimitiveArray<u64>;
 
         #[inline]
-        fn arrow_serialize(_v: &Self, _array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+        fn arrow_serialize(
+            _v: &Self,
+            _array: &mut Self::MutableArrayType,
+        ) -> arrow2::error::Result<()> {
             unimplemented!();
         }
     }
@@ -77,96 +83,102 @@ fn test_schema_types() {
         type ArrayType = arrow2::array::PrimitiveArray<u64>;
 
         #[inline]
-        fn arrow_deserialize<'a>(_v: Option<&'a u64>) -> Option<Self> {
+        fn arrow_deserialize(_v: Option<&u64>) -> Option<Self> {
             unimplemented!();
         }
     }
 
     assert_eq!(
         <Root as arrow2_convert::field::ArrowField>::data_type(),
-        DataType::Struct(
-            vec![
-                Field::new("name", DataType::Utf8, true),
-                Field::new("is_deleted", DataType::Boolean, false),
-                Field::new("a1", DataType::Float64, true),
-                Field::new("a2", DataType::Int64, false),
-                Field::new("a3", DataType::Binary, true),
-                Field::new("a4", DataType::Date32, false),
-                Field::new("a5", DataType::Timestamp(TimeUnit::Nanosecond, None), false),
-                Field::new("a6", DataType::Timestamp(TimeUnit::Nanosecond, None), true),
-                Field::new(
-                    "date_time_list",
-                    DataType::List(Box::new(Field::new("item", DataType::Timestamp(TimeUnit::Nanosecond, None), false))),
+        DataType::Struct(vec![
+            Field::new("name", DataType::Utf8, true),
+            Field::new("is_deleted", DataType::Boolean, false),
+            Field::new("a1", DataType::Float64, true),
+            Field::new("a2", DataType::Int64, false),
+            Field::new("a3", DataType::Binary, true),
+            Field::new("a4", DataType::Date32, false),
+            Field::new("a5", DataType::Timestamp(TimeUnit::Nanosecond, None), false),
+            Field::new("a6", DataType::Timestamp(TimeUnit::Nanosecond, None), true),
+            Field::new(
+                "date_time_list",
+                DataType::List(Box::new(Field::new(
+                    "item",
+                    DataType::Timestamp(TimeUnit::Nanosecond, None),
                     false
-                ),
-                Field::new(
-                    "nullable_list",
-                    DataType::List(Box::new(Field::new("item", DataType::Utf8, true))),
-                    true
-                ),
-                Field::new(
-                    "required_list",
-                    DataType::List(Box::new(Field::new("item", DataType::Utf8, true))),
-                    false
-                ),
-                Field::new(
-                    "custom",
+                ))),
+                false
+            ),
+            Field::new(
+                "nullable_list",
+                DataType::List(Box::new(Field::new("item", DataType::Utf8, true))),
+                true
+            ),
+            Field::new(
+                "required_list",
+                DataType::List(Box::new(Field::new("item", DataType::Utf8, true))),
+                false
+            ),
+            Field::new(
+                "custom",
+                DataType::Extension("custom".to_string(), Box::new(DataType::UInt64), None),
+                false
+            ),
+            Field::new(
+                "nullable_custom",
+                DataType::Extension("custom".to_string(), Box::new(DataType::UInt64), None),
+                true
+            ),
+            Field::new(
+                "custom_list",
+                DataType::List(Box::new(Field::new(
+                    "item",
                     DataType::Extension("custom".to_string(), Box::new(DataType::UInt64), None),
                     false
-                ),
-                Field::new(
-                    "nullable_custom",
-                    DataType::Extension("custom".to_string(), Box::new(DataType::UInt64), None),
-                    true
-                ),
-                Field::new(
-                    "custom_list",
-                    DataType::List(Box::new(Field::new("item", DataType::Extension("custom".to_string(), Box::new(DataType::UInt64), None), false))),
-                    false
-                ),
-                Field::new(
-                    "child",
-                    DataType::Struct(
-                        vec![
-                            Field::new("a1", DataType::Int64, false),
-                            Field::new("a2", DataType::Utf8, false),
-                            Field::new(
-                                "child_array",
-                                DataType::List(
-                                    Box::new(
-                                        Field::new(
-                                            "item",
-                                            DataType::Struct(
-                                                vec![
-                                                    Field::new("a1", DataType::Int32, false),
-                                                    Field::new(
-                                                        "bool_array",
-                                                        DataType::List(Box::new(Field::new("item", DataType::Boolean, false))),
-                                                        false
-                                                    ),
-                                                    Field::new(
-                                                        "int64_array",
-                                                        DataType::List(Box::new(Field::new("item", DataType::Int64, false))),
-                                                        false
-                                                    ),                                    
-                                                ]
-                                            ),
-                                            false
-                                        )
-                                    )
+                ))),
+                false
+            ),
+            Field::new(
+                "child",
+                DataType::Struct(vec![
+                    Field::new("a1", DataType::Int64, false),
+                    Field::new("a2", DataType::Utf8, false),
+                    Field::new(
+                        "child_array",
+                        DataType::List(Box::new(Field::new(
+                            "item",
+                            DataType::Struct(vec![
+                                Field::new("a1", DataType::Int32, false),
+                                Field::new(
+                                    "bool_array",
+                                    DataType::List(Box::new(Field::new(
+                                        "item",
+                                        DataType::Boolean,
+                                        false
+                                    ))),
+                                    false
                                 ),
-                                false
-                            )
-                        ]
-                    ),
-                    false
-                ),
-                Field::new(
-                    "int32_array",
-                    DataType::List(Box::new(Field::new("item", DataType::Int32, false))),
-                    false
-                )
-            ]
-        )
+                                Field::new(
+                                    "int64_array",
+                                    DataType::List(Box::new(Field::new(
+                                        "item",
+                                        DataType::Int64,
+                                        false
+                                    ))),
+                                    false
+                                ),
+                            ]),
+                            false
+                        ))),
+                        false
+                    )
+                ]),
+                false
+            ),
+            Field::new(
+                "int32_array",
+                DataType::List(Box::new(Field::new("item", DataType::Int32, false))),
+                false
+            )
+        ])
     );
 }

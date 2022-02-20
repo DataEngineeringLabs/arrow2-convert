@@ -3,6 +3,19 @@ name: Check and test
 on: [push, pull_request]
 
 jobs:
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust
+        run: rustup update stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Install clippy
+        run: rustup component add clippy
+      - name: "clippy --all"
+        run: cargo clippy --all --features=full --tests -- -D warnings
+
   docker:
     name: Test
     runs-on: ubuntu-latest

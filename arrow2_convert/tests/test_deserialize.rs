@@ -1,22 +1,22 @@
-use arrow2_convert_derive::ArrowField;
-use arrow2_convert::deserialize::*;
-use arrow2_convert::serialize::*;
 use arrow2::array::*;
 use arrow2::error::Result;
+use arrow2_convert::deserialize::*;
+use arrow2_convert::serialize::*;
+use arrow2_convert_derive::ArrowField;
 
 #[test]
 fn test_deserialize_iterator() {
+    use arrow2::array::*;
     use arrow2_convert::deserialize::*;
     use arrow2_convert::serialize::*;
-    use arrow2::array::*;
     use std::borrow::Borrow;
-    
+
     #[derive(Debug, Clone, PartialEq, ArrowField)]
     struct S {
         a1: i64,
     }
 
-    let original_array = [S {a1: 1}, S {a1: 100}, S {a1: 1000}];
+    let original_array = [S { a1: 1 }, S { a1: 100 }, S { a1: 1000 }];
 
     let b: Box<dyn Array> = original_array.into_arrow().unwrap();
 
@@ -29,7 +29,6 @@ fn test_deserialize_iterator() {
 
 #[test]
 fn test_deserialize_schema_mismatch_error() {
-
     #[derive(Debug, Clone, PartialEq, ArrowField)]
     struct S1 {
         a: i64,
@@ -39,9 +38,9 @@ fn test_deserialize_schema_mismatch_error() {
         a: String,
     }
 
-    let arr1 = vec![S1{a: 1}, S1{a: 2}];
+    let arr1 = vec![S1 { a: 1 }, S1 { a: 2 }];
     let arr1: Box<dyn Array> = arr1.into_arrow().unwrap();
 
     let result: Result<Vec<S2>> = arr1.from_arrow();
-    assert_eq!(result.is_err(), true);
+    assert!(result.is_err());
 }
