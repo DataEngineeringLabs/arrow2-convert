@@ -41,9 +41,7 @@ where
     type BaseArrayType: Array;
 
     // Returns a typed iterator to the underlying elements of the array from an untyped Array reference.
-    fn iter_from_array_ref(
-        b: &dyn Array,
-    ) -> arrow2::error::Result<<&Self as IntoIterator>::IntoIter>;
+    fn iter_from_array_ref(b: &dyn Array) -> <&Self as IntoIterator>::IntoIter;
 }
 
 // Macro to facilitate implementation for numeric types and numeric arrays.
@@ -67,13 +65,11 @@ macro_rules! impl_arrow_array {
         impl ArrowArray for $array {
             type BaseArrayType = Self;
 
-            fn iter_from_array_ref(
-                b: &dyn Array,
-            ) -> arrow2::error::Result<<&Self as IntoIterator>::IntoIter> {
-                Ok(b.as_any()
+            fn iter_from_array_ref(b: &dyn Array) -> <&Self as IntoIterator>::IntoIter {
+                b.as_any()
                     .downcast_ref::<Self::BaseArrayType>()
                     .unwrap()
-                    .into_iter())
+                    .into_iter()
             }
         }
     };
@@ -194,7 +190,7 @@ where
     for<'b> &'b <T as ArrowDeserialize>::ArrayType: IntoIterator,
 {
     Ok(
-        <<T as ArrowDeserialize>::ArrayType as ArrowArray>::iter_from_array_ref(b)?
+        <<T as ArrowDeserialize>::ArrayType as ArrowArray>::iter_from_array_ref(b)
             .map(<T as ArrowDeserialize>::arrow_deserialize_internal),
     )
 }

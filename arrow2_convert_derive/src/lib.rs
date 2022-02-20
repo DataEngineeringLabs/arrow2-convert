@@ -2,8 +2,8 @@ use proc_macro2::TokenStream;
 use proc_macro_error::proc_macro_error;
 use quote::TokenStreamExt;
 
-mod input;
 mod _struct;
+mod input;
 
 /// Derive macro for the Array trait.
 #[proc_macro_error]
