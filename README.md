@@ -45,8 +45,7 @@ Please see the [complex_example.rs](./arrow2_convert/tests/complex_example.rs) f
 /// Simple example
 
 use arrow2::array::Array;
-use arrow2_convert_derive::{ArrowField};
-use arrow2_convert::{deserialize::FromArrow,serialize::IntoArrow};
+use arrow2_convert::{deserialize::TryIntoIter, serialize::IntoArrow, ArrowField};
 
 #[derive(Debug, Clone, PartialEq, ArrowField)]
 pub struct Foo {

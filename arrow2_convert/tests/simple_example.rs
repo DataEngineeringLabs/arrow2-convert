@@ -1,7 +1,6 @@
 /// Simple example
 use arrow2::array::Array;
-use arrow2_convert::{deserialize::TryIntoIter, serialize::IntoArrow};
-use arrow2_convert_derive::ArrowField;
+use arrow2_convert::{deserialize::TryIntoIter, serialize::IntoArrow, ArrowField};
 
 #[derive(Debug, Clone, PartialEq, ArrowField)]
 pub struct Foo {

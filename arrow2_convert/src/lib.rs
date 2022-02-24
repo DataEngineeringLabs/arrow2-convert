@@ -4,3 +4,7 @@
 pub mod deserialize;
 pub mod field;
 pub mod serialize;
+
+#[cfg(feature = "arrow2_convert_derive")]
+#[doc(hidden)]
+pub use arrow2_convert_derive::*;

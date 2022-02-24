@@ -7,10 +7,10 @@ error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
 5 | | {}
   | |__- not a `struct`, `enum` or `union`
 
-warning: unused import: `arrow2_convert_derive::ArrowField`
+warning: unused import: `arrow2_convert::ArrowField`
  --> tests/ui/derive_on_trait.rs:1:5
   |
-1 | use arrow2_convert_derive::ArrowField;
-  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1 | use arrow2_convert::ArrowField;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
   = note: `#[warn(unused_imports)]` on by default

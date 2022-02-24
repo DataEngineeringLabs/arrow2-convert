@@ -1,4 +1,4 @@
-use arrow2_convert_derive::ArrowField;
+use arrow2_convert::ArrowField;
 
 #[derive(ArrowField)]
 struct S {}
