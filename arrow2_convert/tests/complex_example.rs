@@ -65,6 +65,9 @@ pub struct CustomType(u64);
 /// - ArrowSerialize
 /// - ArrowDeserialize
 impl arrow2_convert::field::ArrowField for CustomType {
+    type Type = Self;
+
+    #[inline]
     fn data_type() -> arrow2::datatypes::DataType {
         arrow2::datatypes::DataType::Extension(
             "custom".to_string(),
@@ -76,6 +79,11 @@ impl arrow2_convert::field::ArrowField for CustomType {
 
 impl arrow2_convert::serialize::ArrowSerialize for CustomType {
     type MutableArrayType = arrow2::array::MutablePrimitiveArray<u64>;
+
+    #[inline]
+    fn new_array() -> Self::MutableArrayType {
+        Self::MutableArrayType::from(<Self as arrow2_convert::field::ArrowField>::data_type())
+    }
 
     #[inline]
     fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {

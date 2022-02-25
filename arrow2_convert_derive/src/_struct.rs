@@ -91,6 +91,8 @@ pub fn expand_derive(input: &Input) -> TokenStream {
 
     let mut generated = quote!(
         impl arrow2_convert::field::ArrowField for #original_name {
+            type Type = Self;
+            
             fn data_type() -> arrow2::datatypes::DataType {
                 arrow2::datatypes::DataType::Struct(
                     vec![

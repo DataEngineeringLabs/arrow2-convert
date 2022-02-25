@@ -58,6 +58,8 @@ fn test_schema_types() {
     pub struct CustomType(u64);
 
     impl arrow2_convert::field::ArrowField for CustomType {
+        type Type = Self;
+
         fn data_type() -> arrow2::datatypes::DataType {
             arrow2::datatypes::DataType::Extension(
                 "custom".to_string(),
@@ -181,4 +183,21 @@ fn test_schema_types() {
             )
         ])
     );
+}
+
+#[test]
+fn test_large_string_schema()
+{
+    use arrow2_convert::field::LargeString;
+
+    assert_eq!(<LargeString as arrow2_convert::field::ArrowField>::data_type(), DataType::LargeUtf8);
+    assert_eq!(<LargeString as arrow2_convert::field::ArrowField>::is_nullable(), false);
+    assert_eq!(<Option<LargeString> as arrow2_convert::field::ArrowField>::is_nullable(), true);
+
+    assert_eq!(<Vec<LargeString> as arrow2_convert::field::ArrowField>::data_type(), 
+        DataType::List(Box::new(Field::new(
+            "item",
+            DataType::LargeUtf8,
+            false
+    ))));
 }
