@@ -5,7 +5,7 @@ use chrono::{NaiveDate, NaiveDateTime};
 
 use crate::field::*;
 
-/// Implemented by any [`ArrowField`] that can be deserialized from arrow
+/// Implemented by [`ArrowField`] that can be deserialized from arrow
 pub trait ArrowDeserialize: ArrowField + Sized
 where
     Self::ArrayType: ArrowArray,
