@@ -43,7 +43,7 @@ pub fn expand_derive(input: &Input) -> TokenStream {
     let field_names = input
         .fields
         .iter()
-        .map(|field| field.ident.as_ref().unwrap())
+        .map(|field| field.syn.ident.as_ref().unwrap())
         .collect::<Vec<_>>();
 
     if field_names.is_empty() {
@@ -76,7 +76,7 @@ pub fn expand_derive(input: &Input) -> TokenStream {
     let field_types: Vec<&syn::TypePath> = input
         .fields
         .iter()
-        .map(|field| match &field.ty {
+        .map(|field| match &field.field_type {
             syn::Type::Path(path) => {
                 path
             },

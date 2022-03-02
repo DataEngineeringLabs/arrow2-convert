@@ -1,5 +1,6 @@
 use arrow2::datatypes::*;
 use arrow2_convert::ArrowField;
+use arrow2_convert::field::{LargeBinary, LargeString, LargeVec};
 
 #[test]
 fn test_schema_types() {
@@ -33,6 +34,15 @@ fn test_schema_types() {
         child: Child,
         // int 32 array
         int32_array: Vec<i32>,
+        // large binary
+        #[arrow_field(override="LargeBinary")]
+        large_binary: Vec<u8>,
+        // large string
+        #[arrow_field(override="LargeString")]
+        large_string: String,    
+        // large vec
+        #[arrow_field(override="LargeVec<i64>")]
+        large_vec: Vec<i64>
     }
 
     #[derive(Debug, ArrowField)]
@@ -180,7 +190,14 @@ fn test_schema_types() {
                 "int32_array",
                 DataType::List(Box::new(Field::new("item", DataType::Int32, false))),
                 false
-            )
+            ),
+            Field::new("large_binary", DataType::LargeBinary, false),
+            Field::new("large_string", DataType::LargeUtf8, false),
+            Field::new(
+                "large_vec",
+                DataType::LargeList(Box::new(Field::new("item", DataType::Int64, false))),
+                false
+            ),
         ])
     );
 }

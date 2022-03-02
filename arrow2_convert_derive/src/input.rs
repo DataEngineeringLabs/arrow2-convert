@@ -1,6 +1,6 @@
 use proc_macro2::Span;
-use proc_macro_error::abort;
-use syn::{Data, DeriveInput, Field, Ident, Lit, Meta, MetaNameValue, Visibility};
+use proc_macro_error::{abort, ResultExt};
+use syn::{Data, DeriveInput, Ident, Lit, Meta, MetaNameValue, Visibility};
 
 #[derive(PartialEq)]
 pub enum TraitsToDerive {
@@ -22,12 +22,56 @@ pub struct Input {
     pub visibility: Visibility,
 }
 
+pub struct Field {
+    pub syn: syn::Field,
+    pub field_type: syn::Type,
+}
+
+fn arrow_field(field: &syn::Field) -> syn::Type {
+    for attr in &field.attrs {
+        if let Ok(meta) = attr.parse_meta() {
+            if meta.path().is_ident("arrow_field") { 
+                if let Meta::List(list) = meta {
+                    for nested in list.nested {
+                        if let syn::NestedMeta::Meta(meta) = nested {
+                            match meta {
+                                Meta::NameValue(MetaNameValue {
+                                    lit: Lit::Str(string),
+                                    path,
+                                    ..
+                                }) => {
+                                    if path.is_ident("override") {
+                                        return syn::parse_str(&string.value()).unwrap_or_abort()
+                                    }
+                                },
+                                _ => {
+                                    use syn::spanned::Spanned;
+                                    abort!(meta.span(), "Unexpected attribute");
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    field.ty.clone()
+}
+
 impl Input {
     pub fn new(input: DeriveInput) -> Input {
         let mut traits_to_derive = TraitsToDerive::All;
 
         let fields = match input.data {
-            Data::Struct(s) => s.fields.iter().cloned().collect::<Vec<_>>(),
+            Data::Struct(s) => s.fields.iter()
+                .map(|f|
+                    Field { 
+                        syn: f.clone(),
+                        field_type: arrow_field(f)
+                    } 
+                )
+                .collect::<Vec<_>>(),
             _ => abort!(
                 input.ident.span(),
                 "#[derive(ArrowField)] only supports structs."
