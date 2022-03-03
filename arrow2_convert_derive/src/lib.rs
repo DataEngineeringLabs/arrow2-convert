@@ -1,19 +1,22 @@
-use proc_macro2::TokenStream;
-use proc_macro_error::proc_macro_error;
-use quote::TokenStreamExt;
+use proc_macro_error::{abort, proc_macro_error};
 
-mod _struct;
+mod derive_enum;
+mod derive_struct;
 mod input;
 
-/// Derive macro for the Array trait.
+use input::*;
+
+/// Derive macro for arrow fields
 #[proc_macro_error]
 #[proc_macro_derive(ArrowField, attributes(arrow_field))]
 pub fn arrow2_convert_derive_field(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let ast = syn::parse(input).unwrap();
-    let input = input::Input::new(ast);
+    let ast: syn::DeriveInput = syn::parse(input).unwrap();
 
-    // Build the output, possibly using quasi-quotation
-    let mut generated = TokenStream::new();
-    generated.append_all(_struct::expand_derive(&input));
-    generated.into()
+    match &ast.data {
+        syn::Data::Enum(e) => derive_enum::expand(DeriveEnum::from_ast(&ast, e)).into(),
+        syn::Data::Struct(s) => derive_struct::expand(DeriveStruct::from_ast(&ast, s)).into(),
+        _ => {
+            abort!(ast.ident.span(), "Only structs and enums supported");
+        }
+    }
 }

@@ -1,6 +1,5 @@
 use arrow2::array::*;
 use arrow2_convert::deserialize::{arrow_array_deserialize_iterator, TryIntoCollection};
-use arrow2_convert::field::{FixedSizeBinary, FixedSizeVec, LargeBinary, LargeString, LargeVec};
 use arrow2_convert::serialize::TryIntoArrow;
 /// Complex example that uses the following features:
 ///
@@ -40,19 +39,19 @@ pub struct Root {
     // int 32 array
     int32_array: Vec<i32>,
     // large binary
-    #[arrow_field(override = "LargeBinary")]
+    #[arrow_field(type = "arrow2_convert::field::LargeBinary")]
     large_binary: Vec<u8>,
     // fixed size binary
-    #[arrow_field(override = "FixedSizeBinary<3>")]
+    #[arrow_field(type = "arrow2_convert::field::FixedSizeBinary<3>")]
     fixed_size_binary: Vec<u8>,
     // large string
-    #[arrow_field(override = "LargeString")]
+    #[arrow_field(type = "arrow2_convert::field::LargeString")]
     large_string: String,
     // large vec
-    #[arrow_field(override = "LargeVec<i64>")]
+    #[arrow_field(type = "arrow2_convert::field::LargeVec<i64>")]
     large_vec: Vec<i64>,
     // fixed size vec
-    #[arrow_field(override = "FixedSizeVec<i64, 3>")]
+    #[arrow_field(type = "arrow2_convert::field::FixedSizeVec<i64, 3>")]
     fixed_size_vec: Vec<i64>,
 }
 
