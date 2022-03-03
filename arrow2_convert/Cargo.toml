@@ -8,7 +8,7 @@ authors = [
 edition = "2021"
 license = "Apache-2.0 OR MIT"
 keywords = ["Arrow", "arrow2"]
-repository = "https://github.com/DataEngineeringLabs/arrow2-derive/arrow2_convert"
+repository = "https://github.com/DataEngineeringLabs/arrow2-convert/arrow2_convert"
 description = "Convert between nested rust types and Arrow with arrow2"
 
 [dependencies]
