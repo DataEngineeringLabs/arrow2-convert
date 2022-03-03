@@ -4,8 +4,8 @@
 /// - Custom types
 
 use arrow2::array::*;
-use arrow2_convert::deserialize::{arrow_array_deserialize_iterator, TryIntoIter};
-use arrow2_convert::serialize::IntoArrow;
+use arrow2_convert::deserialize::{arrow_array_deserialize_iterator, TryIntoCollection};
+use arrow2_convert::serialize::TryIntoArrow;
 use arrow2_convert::ArrowField;
 use arrow2_convert::field::{LargeBinary, LargeString, LargeVec};
 use std::borrow::Borrow;
@@ -206,7 +206,7 @@ fn test_round_trip() -> arrow2::error::Result<()> {
     // serialize to an arrow array
     let original_array = [item1(), item2()];
 
-    let array: Box<dyn Array> = original_array.into_arrow()?;
+    let array: Box<dyn Array> = original_array.try_into_arrow()?;
     let struct_array = array
         .as_any()
         .downcast_ref::<arrow2::array::StructArray>()
@@ -223,7 +223,7 @@ fn test_round_trip() -> arrow2::error::Result<()> {
     }
 
     // or can back to our original vector
-    let foo_array: Vec<Root> = array.try_into_iter()?;
+    let foo_array: Vec<Root> = array.try_into_collection()?;
     assert_eq!(foo_array, original_array);
     Ok(())
 }
