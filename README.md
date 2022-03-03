@@ -11,11 +11,13 @@ The following features are supported:
 - Custom types can be used as fields by implementing the ArrowField, ArrowSerialize, and ArrowDeserialize traits.
 - Optional fields.
 - Deep nesting via structs which derive the `ArrowField` macro or by Vec<T>.
+- Large types:
+    - ['LargeBinary'], ['LargeString'], ['LargeList`]
+    - These can be used via the "override" attribute. Please see the [complex_example.rs](./arrow2_convert/tests/complex_example.rs) for usage.
 
 The following are not yet supported. 
 
 - Rust enums, slices, references
-- Large lists
 
 Note: This is not an exclusive list. Please see the repo issues for current work in progress and add proposals for features that would be useful for your project.
 
@@ -86,6 +88,12 @@ To achieve this, the following approach is used:
 - Blanket implementations are provided for types that recursively contain types that implement the above traits eg. [`Option<T>`], [`Vec<T>`], [`Vec<Option<T>>`], [`Vec<Vec<Option<T>>>`], etc. The blanket implementation needs be enabled by the `arrow_enable_vec_for_type` macro on the primitive type. This explicit enabling is needed since Vec<u8> is a special type in Arrow, and implementation specialization is not yet supported in rust to allow blanket implementations to coexist with more specialized implementations.
 
 - Supporting traits to expose functionality not exposed via arrow2's traits.
+
+### Implementing Large Types
+
+Ideally for code reusability, we wouldn’t have to reimplement `ArrowSerialize` and `ArrowDeserialize` for large and fixed offset types since the primitive types are the same. However, this requires the trait functions to take a generic bounded mutable array as an argument instead of a single array type. This requires the `ArrowSerialize` and `ArrowDeserialize` implementations to be able to specify the bounds as part of the associated type , which not possible without generic associated types.
+
+As a result, we’re forced to sacrifice code reusability and introduce a little bit of complexity by providing separate `ArrowSerialize` and `ArrowDeserialize` implementations for large types via placeholder structures. This also requires introducing the `Type` attribute to `ArrowField` so that the large types can be used via a field attribute without affecting the structure field types.
 
 ### Why not serde?
 

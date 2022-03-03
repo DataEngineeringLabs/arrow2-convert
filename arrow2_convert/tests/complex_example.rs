@@ -7,6 +7,7 @@ use arrow2::array::*;
 use arrow2_convert::deserialize::{arrow_array_deserialize_iterator, TryIntoIter};
 use arrow2_convert::serialize::IntoArrow;
 use arrow2_convert::ArrowField;
+use arrow2_convert::field::{LargeBinary, LargeString, LargeVec};
 use std::borrow::Borrow;
 
 #[derive(Debug, Clone, PartialEq, ArrowField)]
@@ -39,6 +40,15 @@ pub struct Root {
     child: Child,
     // int 32 array
     int32_array: Vec<i32>,
+    // large binary
+    #[arrow_field(override="LargeBinary")]
+    large_binary: Vec<u8>,
+    // large string
+    #[arrow_field(override="LargeString")]
+    large_string: String,    
+    // large vec
+    #[arrow_field(override="LargeVec<i64>")]
+    large_vec: Vec<i64>
 }
 
 #[derive(Debug, Clone, PartialEq, ArrowField)]
@@ -65,6 +75,9 @@ pub struct CustomType(u64);
 /// - ArrowSerialize
 /// - ArrowDeserialize
 impl arrow2_convert::field::ArrowField for CustomType {
+    type Type = Self;
+
+    #[inline]
     fn data_type() -> arrow2::datatypes::DataType {
         arrow2::datatypes::DataType::Extension(
             "custom".to_string(),
@@ -76,6 +89,11 @@ impl arrow2_convert::field::ArrowField for CustomType {
 
 impl arrow2_convert::serialize::ArrowSerialize for CustomType {
     type MutableArrayType = arrow2::array::MutablePrimitiveArray<u64>;
+
+    #[inline]
+    fn new_array() -> Self::MutableArrayType {
+        Self::MutableArrayType::from(<Self as arrow2_convert::field::ArrowField>::data_type())
+    }
 
     #[inline]
     fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
@@ -133,6 +151,9 @@ fn item1() -> Root {
             ],
         },
         int32_array: vec![0, 1, 3],
+        large_binary: b"aa".to_vec(),
+        large_string: "abcdefg".to_string(),
+        large_vec: vec![1, 2, 3, 4]
     }
 }
 
@@ -174,6 +195,9 @@ fn item2() -> Root {
             ],
         },
         int32_array: vec![111, 1],
+        large_binary: b"bb".to_vec(),
+        large_string: "abdefag".to_string(),
+        large_vec: vec![5, 4, 3, 2]
     }
 }
 
@@ -190,7 +214,7 @@ fn test_round_trip() -> arrow2::error::Result<()> {
     assert_eq!(struct_array.len(), 2);
 
     let values = struct_array.values();
-    assert_eq!(values.len(), 16);
+    assert_eq!(values.len(), 19);
     assert_eq!(struct_array.len(), 2);
 
     // can iterate one struct at a time without collecting
