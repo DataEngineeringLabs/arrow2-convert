@@ -217,12 +217,12 @@ impl_arrow_array!(ListArray<i32>);
 impl_arrow_array!(ListArray<i64>);
 
 /// Top-level API to deserialize from Arrow
-pub trait TryIntoIter<Collection, Element>
+pub trait TryIntoCollection<Collection, Element>
     where Element: ArrowField,
         Collection: FromIterator<Element>
 {
-    fn try_into_iter(self) -> arrow2::error::Result<Collection>;
-    fn try_into_iter_as_type<ArrowType>(self) -> arrow2::error::Result<Collection>
+    fn try_into_collection(self) -> arrow2::error::Result<Collection>;
+    fn try_into_collection_as_type<ArrowType>(self) -> arrow2::error::Result<Collection>
     where ArrowType: ArrowDeserialize + ArrowField<Type = Element> + 'static,
         for<'b> &'b <ArrowType as ArrowDeserialize>::ArrayType: IntoIterator;
 }
@@ -269,17 +269,18 @@ where
     arrow_array_deserialize_iterator_as_type::<T, T>(arr)
 }
 
-impl<'a, Element, ArrowArray> TryIntoIter<Vec<Element>, Element> for ArrowArray
+impl<'a, Collection, Element, ArrowArray> TryIntoCollection<Collection, Element> for ArrowArray
 where
     Element: ArrowDeserialize + ArrowField<Type = Element> + 'static,
     for<'b> &'b <Element as ArrowDeserialize>::ArrayType: IntoIterator,
-    ArrowArray: std::borrow::Borrow<dyn Array>
+    ArrowArray: std::borrow::Borrow<dyn Array>,
+    Collection: FromIterator<Element>
 {
-    fn try_into_iter(self) -> arrow2::error::Result<Vec<Element>> {
+    fn try_into_collection(self) -> arrow2::error::Result<Collection> {
         Ok(arrow_array_deserialize_iterator::<Element>(self.borrow())?.collect())
     }
 
-    fn try_into_iter_as_type<ArrowType>(self) -> arrow2::error::Result<Vec<Element>>
+    fn try_into_collection_as_type<ArrowType>(self) -> arrow2::error::Result<Collection>
     where ArrowType: ArrowDeserialize + ArrowField<Type = Element> + 'static,
         for<'b> &'b <ArrowType as ArrowDeserialize>::ArrayType: IntoIterator
     {

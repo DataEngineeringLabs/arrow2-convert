@@ -19,7 +19,7 @@ fn test_deserialize_iterator() {
 
     let original_array = [S { a1: 1 }, S { a1: 100 }, S { a1: 1000 }];
 
-    let b: Box<dyn Array> = original_array.into_arrow().unwrap();
+    let b: Box<dyn Array> = original_array.try_into_arrow().unwrap();
 
     let iter = arrow_array_deserialize_iterator::<S>(b.borrow()).unwrap();
 
@@ -40,9 +40,9 @@ fn test_deserialize_schema_mismatch_error() {
     }
 
     let arr1 = vec![S1 { a: 1 }, S1 { a: 2 }];
-    let arr1: Box<dyn Array> = arr1.into_arrow().unwrap();
+    let arr1: Box<dyn Array> = arr1.try_into_arrow().unwrap();
 
-    let result: Result<Vec<S2>> = arr1.try_into_iter();
+    let result: Result<Vec<S2>> = arr1.try_into_collection();
     assert!(result.is_err());
 }
 
@@ -59,8 +59,8 @@ fn test_deserialize_large_types_schema_mismatch_error() {
     }
 
     let arr1 = vec![S1 { a: "123".to_string() }, S1 { a: "333".to_string() }];
-    let arr1: Box<dyn Array> = arr1.into_arrow().unwrap();
+    let arr1: Box<dyn Array> = arr1.try_into_arrow().unwrap();
 
-    let result: Result<Vec<S2>> = arr1.try_into_iter();
+    let result: Result<Vec<S2>> = arr1.try_into_collection();
     assert!(result.is_err());
 }

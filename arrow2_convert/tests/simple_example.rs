@@ -1,6 +1,6 @@
 /// Simple example
 use arrow2::array::Array;
-use arrow2_convert::{deserialize::TryIntoIter, serialize::IntoArrow, ArrowField};
+use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow, ArrowField};
 
 #[derive(Debug, Clone, PartialEq, ArrowField)]
 pub struct Foo {
@@ -22,8 +22,8 @@ fn test_simple_roundtrip() {
         },
     ];
 
-    // serialize to an arrow array. into_arrow() is enabled by the IntoArrow trait
-    let arrow_array: Box<dyn Array> = original_array.into_arrow().unwrap();
+    // serialize to an arrow array. try_into_arrow() is enabled by the TryIntoArrow trait
+    let arrow_array: Box<dyn Array> = original_array.try_into_arrow().unwrap();
 
     // which can be cast to an Arrow StructArray and be used for all kinds of IPC, FFI, etc.
     // supported by `arrow2`
@@ -33,7 +33,7 @@ fn test_simple_roundtrip() {
         .unwrap();
     assert_eq!(struct_array.len(), 3);
 
-    // deserialize back to our original vector via TryIntoIter trait.
-    let round_trip_array: Vec<Foo> = arrow_array.try_into_iter().unwrap();
+    // deserialize back to our original vector via TryIntoCollection trait.
+    let round_trip_array: Vec<Foo> = arrow_array.try_into_collection().unwrap();
     assert_eq!(round_trip_array, original_array);
 }

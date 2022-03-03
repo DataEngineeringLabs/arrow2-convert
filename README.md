@@ -31,9 +31,9 @@ Types (currently only structures) can be annotated with the `ArrowField` procedu
 - A typed iterator for deserialization
 - Implementations of the `ArrowField`, `ArrowSerialize`, and `ArrowDeserialize` traits.
 
-Serialization can be performed by using the `arrow_serialize` method from the `IntoArrow` trait or by manually pushing elements to the generated `arrow2::array::MutableArray`.
+Serialization can be performed by using the `arrow_serialize` method from the `TryIntoArrow` trait or by manually pushing elements to the generated `arrow2::array::MutableArray`.
 
-Deserialization can be performed by using the `try_into_iter` method from the `TryIntoIterator` trait or by iterating through the iterator provided by `arrow_array_deserialize_iterator`.
+Deserialization can be performed by using the `try_into_collection` method from the `TryIntoCollection` trait or by iterating through the iterator provided by `arrow_array_deserialize_iterator`.
 
 Both serialization and deserialization perform memory copies for the elements converted. For example, iterating through the deserialize iterator will copy memory from the arrow2 array, into the structure that the iterator returns. Deserialization can be more efficient by supporting structs with references.
 
@@ -47,7 +47,7 @@ Please see the [complex_example.rs](./arrow2_convert/tests/complex_example.rs) f
 /// Simple example
 
 use arrow2::array::Array;
-use arrow2_convert::{deserialize::TryIntoIter, serialize::IntoArrow, ArrowField};
+use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow, ArrowField};
 
 #[derive(Debug, Clone, PartialEq, ArrowField)]
 pub struct Foo {
@@ -63,16 +63,16 @@ fn test_simple_roundtrip() {
         Foo { name: "good bye".to_string() },
     ];
 
-    // serialize to an arrow array. into_arrow() is enabled by the IntoArrow trait
-    let arrow_array: Box<dyn Array> = original_array.into_arrow().unwrap();
+    // serialize to an arrow array. try_into_arrow() is enabled by the TryIntoArrow trait
+    let arrow_array: Box<dyn Array> = original_array.try_into_arrow().unwrap();
 
     // which can be cast to an Arrow StructArray and be used for all kinds of IPC, FFI, etc.
     // supported by `arrow2`
     let struct_array= arrow_array.as_any().downcast_ref::<arrow2::array::StructArray>().unwrap();
     assert_eq!(struct_array.len(), 3);
 
-    // deserialize back to our original vector via TryIntoIter trait.
-    let round_trip_array: Vec<Foo> = arrow_array.try_into_iter().unwrap();
+    // deserialize back to our original vector via TryIntoCollection trait.
+    let round_trip_array: Vec<Foo> = arrow_array.try_into_collection().unwrap();
     assert_eq!(round_trip_array, original_array);
 }
 ```

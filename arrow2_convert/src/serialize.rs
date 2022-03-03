@@ -286,41 +286,41 @@ fn arrow_serialize_internal<'a, A: 'static, T: ArrowSerialize + ArrowField<Type 
 }
 
 /// Top-level API to serialize to Arrow
-pub trait IntoArrow<'a, ArrowArray, Element> 
+pub trait TryIntoArrow<'a, ArrowArray, Element> 
     where Self: IntoIterator<Item = &'a Element>,
         Element: 'static
 {
-    fn into_arrow(self) -> arrow2::error::Result<ArrowArray>;
-    fn into_arrow_as_type<ArrowType>(self) -> arrow2::error::Result<ArrowArray> 
+    fn try_into_arrow(self) -> arrow2::error::Result<ArrowArray>;
+    fn try_into_arrow_as_type<ArrowType>(self) -> arrow2::error::Result<ArrowArray> 
         where ArrowType: ArrowSerialize + ArrowField<Type = Element> + 'static;
 }
 
-impl<'a, Element, Collection> IntoArrow<'a, Arc<dyn Array>, Element> for Collection
+impl<'a, Element, Collection> TryIntoArrow<'a, Arc<dyn Array>, Element> for Collection
 where
     Element: ArrowSerialize + ArrowField<Type = Element> + 'static,
     Collection: IntoIterator<Item = &'a Element>,
 {
-    fn into_arrow(self) -> arrow2::error::Result<Arc<dyn Array>> {
+    fn try_into_arrow(self) -> arrow2::error::Result<Arc<dyn Array>> {
         Ok(arrow_serialize_internal::<Element, Element, Collection>(self)?.as_arc())
     }
 
-    fn into_arrow_as_type<Field>(self) -> arrow2::error::Result<Arc<dyn Array>> 
+    fn try_into_arrow_as_type<Field>(self) -> arrow2::error::Result<Arc<dyn Array>> 
         where Field: ArrowSerialize + ArrowField<Type = Element> + 'static
     {
         Ok(arrow_serialize_internal::<Element, Field, Collection>(self)?.as_arc())
     }
 }
 
-impl<'a, Element, Collection> IntoArrow<'a, Box<dyn Array>, Element> for Collection
+impl<'a, Element, Collection> TryIntoArrow<'a, Box<dyn Array>, Element> for Collection
 where
     Element: ArrowSerialize + ArrowField<Type = Element> + 'static,
     Collection: IntoIterator<Item = &'a Element>,
 {
-    fn into_arrow(self) -> arrow2::error::Result<Box<dyn Array>> {
+    fn try_into_arrow(self) -> arrow2::error::Result<Box<dyn Array>> {
         Ok(arrow_serialize_internal::<Element, Element, Collection>(self)?.as_box())
     }
 
-    fn into_arrow_as_type<E>(self) -> arrow2::error::Result<Box<dyn Array>> 
+    fn try_into_arrow_as_type<E>(self) -> arrow2::error::Result<Box<dyn Array>> 
         where E: ArrowSerialize + ArrowField<Type = Element> + 'static
     {
         Ok(arrow_serialize_internal::<Element, E, Collection>(self)?.as_box())
