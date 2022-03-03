@@ -169,6 +169,29 @@ impl ArrowDeserialize for LargeBinary {
     }
 }
 
+impl<const SIZE: usize> ArrowDeserialize for FixedSizeBinary<SIZE> {
+    type ArrayType = FixedSizeBinaryArray;
+
+    #[inline]
+    fn arrow_deserialize(v: Option<&[u8]>) -> Option<Vec<u8>> {
+        v.map(|t| t.to_vec())
+    }
+}
+
+fn arrow_deserialize_vec_helper<T>(v: Option<Box<dyn Array>>) -> Option<<Vec<T> as ArrowField>::Type> 
+    where     
+        T: ArrowDeserialize + ArrowEnableVecForType + 'static,
+        for<'a> &'a T::ArrayType: IntoIterator,
+{
+    use std::ops::Deref;
+    match v {
+        Some(t) => arrow_array_deserialize_iterator_internal::<<T as ArrowField>::Type, T>(t.deref())
+            .ok()
+            .map(|i| i.collect::<Vec<<T as ArrowField>::Type>>()),
+        None => None,
+    }
+}
+
 // Blanket implementation for Vec
 impl<T> ArrowDeserialize for Vec<T>
 where
@@ -179,13 +202,7 @@ where
     type ArrayType = ListArray<i32>;
 
     fn arrow_deserialize(v: Option<Box<dyn Array>>) -> Option<<Self as ArrowField>::Type> {
-        use std::ops::Deref;
-        match v {
-            Some(t) => arrow_array_deserialize_iterator_internal::<<T as ArrowField>::Type, T>(t.deref())
-                .ok()
-                .map(|i| i.collect::<Vec<<T as ArrowField>::Type>>()),
-            None => None,
-        }
+        arrow_deserialize_vec_helper::<T>(v)
     }
 }
 
@@ -198,13 +215,20 @@ where
     type ArrayType = ListArray<i64>;
 
     fn arrow_deserialize(v: Option<Box<dyn Array>>) -> Option<<Self as ArrowField>::Type> {
-        use std::ops::Deref;
-        match v {
-            Some(t) => arrow_array_deserialize_iterator_internal::<<T as ArrowField>::Type, T>(t.deref())
-                .ok()
-                .map(|i| i.collect::<Vec<<T as ArrowField>::Type>>()),
-            None => None,
-        }
+        arrow_deserialize_vec_helper::<T>(v)
+    }
+}
+
+impl<T, const SIZE: usize> ArrowDeserialize for FixedSizeVec<T, SIZE>
+where
+    T: ArrowDeserialize + ArrowEnableVecForType + 'static,
+    <T as ArrowDeserialize>::ArrayType: 'static,
+    for<'b> &'b <T as ArrowDeserialize>::ArrayType: IntoIterator,
+{
+    type ArrayType = FixedSizeListArray;
+
+    fn arrow_deserialize(v: Option<Box<dyn Array>>) -> Option<<Self as ArrowField>::Type> {
+        arrow_deserialize_vec_helper::<T>(v)
     }
 }
 
@@ -213,8 +237,10 @@ impl_arrow_array!(Utf8Array<i32>);
 impl_arrow_array!(Utf8Array<i64>);
 impl_arrow_array!(BinaryArray<i32>);
 impl_arrow_array!(BinaryArray<i64>);
+impl_arrow_array!(FixedSizeBinaryArray);
 impl_arrow_array!(ListArray<i32>);
 impl_arrow_array!(ListArray<i64>);
+impl_arrow_array!(FixedSizeListArray);
 
 /// Top-level API to deserialize from Arrow
 pub trait TryIntoCollection<Collection, Element>

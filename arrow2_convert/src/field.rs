@@ -175,6 +175,17 @@ impl ArrowField for LargeBinary {
     }
 }
 
+pub struct FixedSizeBinary<const SIZE: usize> {}
+
+impl<const SIZE: usize> ArrowField for FixedSizeBinary<SIZE> {
+    type Type = Vec<u8>;
+
+    #[inline]
+    fn data_type() -> arrow2::datatypes::DataType {
+        arrow2::datatypes::DataType::FixedSizeBinary(SIZE)
+    }
+}
+
 // Blanket implementation for Vec.
 impl<T> ArrowField for Vec<T>
 where
@@ -204,6 +215,22 @@ where
     }
 }
 
+pub struct FixedSizeVec<T, const SIZE: usize> {
+    d: std::marker::PhantomData<T>
+}
+
+impl<T, const SIZE: usize> ArrowField for FixedSizeVec<T, SIZE> 
+where
+    T: ArrowField + ArrowEnableVecForType
+{
+    type Type = Vec<<T as ArrowField>::Type>;
+
+    #[inline]
+    fn data_type() -> arrow2::datatypes::DataType {
+        arrow2::datatypes::DataType::FixedSizeList(Box::new(<T as ArrowField>::field("item")), SIZE)
+    }
+}
+
 arrow_enable_vec_for_type!(String);
 arrow_enable_vec_for_type!(LargeString);
 arrow_enable_vec_for_type!(bool);
@@ -211,6 +238,7 @@ arrow_enable_vec_for_type!(NaiveDateTime);
 arrow_enable_vec_for_type!(NaiveDate);
 arrow_enable_vec_for_type!(Vec<u8>);
 arrow_enable_vec_for_type!(LargeBinary);
+impl<const SIZE: usize> ArrowEnableVecForType for FixedSizeBinary<SIZE> {}
 
 // Blanket implementation for Vec<Option<T>> if vectors are enabled for T
 impl<T> ArrowEnableVecForType for Option<T> where T: ArrowField + ArrowEnableVecForType {}
@@ -218,3 +246,4 @@ impl<T> ArrowEnableVecForType for Option<T> where T: ArrowField + ArrowEnableVec
 // Blanket implementation for Vec<Vec<T>> if vectors are enabled for T
 impl<T> ArrowEnableVecForType for Vec<T> where T: ArrowField + ArrowEnableVecForType {}
 impl<T> ArrowEnableVecForType for LargeVec<T> where T: ArrowField + ArrowEnableVecForType {}
+impl<T, const SIZE: usize> ArrowEnableVecForType for FixedSizeVec<T, SIZE> where T: ArrowField + ArrowEnableVecForType {}
