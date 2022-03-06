@@ -16,10 +16,12 @@ The following features are supported:
     - These can be used via the "override" attribute. Please see the [complex_example.rs](./arrow2_convert/tests/complex_example.rs) for usage.
 - Fixed size types:
     - [`FixedSizeBinary`]
+    - [`FixedSizeList`]
+        - This is supported for a fixed size `Vec<T>` via the `FixedSizeVec` type override.
+        - Note: nesting of [`FixedSizeList`] is not supported.
 
 The following are not yet supported. 
 
-- [`FixedSizeList`]
 - Rust enums, slices, references
 
 Note: This is not an exclusive list. Please see the repo issues for current work in progress and add proposals for features that would be useful for your project.

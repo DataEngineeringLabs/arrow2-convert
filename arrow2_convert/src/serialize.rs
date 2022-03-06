@@ -279,22 +279,20 @@ where
 
     #[inline]
     fn new_array() -> Self::MutableArrayType {
-        Self::MutableArrayType::new(
+        Self::MutableArrayType::new_with_field(
             <T as ArrowSerialize>::new_array(),
+            "item",
+            <T as ArrowField>::is_nullable(),
             SIZE
         )
     }
 
-    fn arrow_serialize(_v: &<Self as ArrowField>::Type, _array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
-        // TODO: neeed mutable values from arrow2::MutableFixedSizeListArray
-        /*
+    fn arrow_serialize(v: &<Self as ArrowField>::Type, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
         let values = array.mut_values();
         for i in v.iter() {
             <T as ArrowSerialize>::arrow_serialize(i, values)?;
         }
         array.try_push_valid()
-        */
-        unimplemented!()
     }
 }
 

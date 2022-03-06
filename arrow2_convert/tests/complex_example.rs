@@ -5,7 +5,7 @@
 
 use arrow2_convert::ArrowField;
 use arrow2_convert::deserialize::{arrow_array_deserialize_iterator, TryIntoCollection};
-use arrow2_convert::field::{LargeBinary, LargeString, LargeVec, FixedSizeBinary};
+use arrow2_convert::field::{LargeBinary, LargeString, LargeVec, FixedSizeBinary, FixedSizeVec};
 use arrow2_convert::serialize::TryIntoArrow;
 use arrow2::array::*;
 use std::borrow::Borrow;
@@ -52,6 +52,9 @@ pub struct Root {
     // large vec
     #[arrow_field(override="LargeVec<i64>")]
     large_vec: Vec<i64>,
+    // fixed size vec
+    #[arrow_field(override="FixedSizeVec<i64, 3>")]
+    fixed_size_vec: Vec<i64>,    
 }
 
 #[derive(Debug, Clone, PartialEq, ArrowField)]
@@ -158,6 +161,7 @@ fn item1() -> Root {
         fixed_size_binary: b"aaa".to_vec(),
         large_string: "abcdefg".to_string(),
         large_vec: vec![1, 2, 3, 4],
+        fixed_size_vec: vec![10, 20, 30],
     }
 }
 
@@ -203,6 +207,7 @@ fn item2() -> Root {
         fixed_size_binary: b"bbb".to_vec(),
         large_string: "abdefag".to_string(),
         large_vec: vec![5, 4, 3, 2],
+        fixed_size_vec: vec![11, 21, 32],
     }
 }
 
@@ -219,7 +224,7 @@ fn test_round_trip() -> arrow2::error::Result<()> {
     assert_eq!(struct_array.len(), 2);
 
     let values = struct_array.values();
-    assert_eq!(values.len(), 20);
+    assert_eq!(values.len(), 21);
     assert_eq!(struct_array.len(), 2);
 
     // can iterate one struct at a time without collecting
