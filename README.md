@@ -12,8 +12,13 @@ The following features are supported:
 - Optional fields.
 - Deep nesting via structs which derive the `ArrowField` macro or by Vec<T>.
 - Large types:
-    - ['LargeBinary'], ['LargeString'], ['LargeList`]
+    - [`LargeBinary`], [`LargeString`], [`LargeList`]
     - These can be used via the "override" attribute. Please see the [complex_example.rs](./arrow2_convert/tests/complex_example.rs) for usage.
+- Fixed size types:
+    - [`FixedSizeBinary`]
+    - [`FixedSizeList`]
+        - This is supported for a fixed size `Vec<T>` via the `FixedSizeVec` type override.
+        - Note: nesting of [`FixedSizeList`] is not supported.
 
 The following are not yet supported. 
 
@@ -91,9 +96,9 @@ To achieve this, the following approach is used:
 
 ### Implementing Large Types
 
-Ideally for code reusability, we wouldn’t have to reimplement `ArrowSerialize` and `ArrowDeserialize` for large and fixed offset types since the primitive types are the same. However, this requires the trait functions to take a generic bounded mutable array as an argument instead of a single array type. This requires the `ArrowSerialize` and `ArrowDeserialize` implementations to be able to specify the bounds as part of the associated type , which not possible without generic associated types.
+Ideally for code reusability, we wouldn’t have to reimplement `ArrowSerialize` and `ArrowDeserialize` for large and fixed size types since the primitive types are the same. However, this requires the trait functions to take a generic bounded mutable array as an argument instead of a single array type. This requires the `ArrowSerialize` and `ArrowDeserialize` implementations to be able to specify the bounds as part of the associated type, which is not possible without generic associated types.
 
-As a result, we’re forced to sacrifice code reusability and introduce a little bit of complexity by providing separate `ArrowSerialize` and `ArrowDeserialize` implementations for large types via placeholder structures. This also requires introducing the `Type` attribute to `ArrowField` so that the large types can be used via a field attribute without affecting the structure field types.
+As a result, we’re forced to sacrifice code reusability and introduce a little bit of complexity by providing separate `ArrowSerialize` and `ArrowDeserialize` implementations for large and fixed size types via placeholder structures. This also requires introducing the `Type` associated type to `ArrowField` so that the arrow type can be overriden via a macro field attribute without affecting the actual type.
 
 ### Why not serde?
 

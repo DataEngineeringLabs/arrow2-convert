@@ -126,7 +126,7 @@ pub fn expand_derive(input: &Input) -> TokenStream {
             impl #mutable_array_name {
                 pub fn new() -> Self {
                     Self {
-                        #(#field_names: <#field_types as arrow2_convert::serialize::ArrowSerialize>::MutableArrayType::default(),)*
+                        #(#field_names: <#field_types as arrow2_convert::serialize::ArrowSerialize>::new_array(),)*
                         data_type: <#original_name as arrow2_convert::field::ArrowField>::data_type(),
                         validity: None,
                     }
@@ -259,6 +259,11 @@ pub fn expand_derive(input: &Input) -> TokenStream {
 
             impl arrow2_convert::serialize::ArrowSerialize for #original_name {
                 type MutableArrayType = #mutable_array_name;
+    
+                #[inline]
+                fn new_array() -> Self::MutableArrayType {
+                    Self::MutableArrayType::default()
+                }
     
                 fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
                     use arrow2::array::TryPush;

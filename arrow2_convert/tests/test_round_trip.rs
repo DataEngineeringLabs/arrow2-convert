@@ -1,9 +1,9 @@
-use arrow2::array::*;
-use arrow2::datatypes::*;
+use arrow2_convert::{ArrowField,field::{LargeString,LargeVec,FixedSizeBinary,FixedSizeVec}};
 use arrow2_convert::deserialize::*;
 use arrow2_convert::field::LargeBinary;
 use arrow2_convert::serialize::*;
-use arrow2_convert::{ArrowField,field::{LargeString,LargeVec}};
+use arrow2::array::*;
+use arrow2::datatypes::*;
 
 #[test]
 fn test_nested_optional_struct_array() {
@@ -89,6 +89,16 @@ fn test_large_binary_nested()
 }
 
 #[test]
+fn test_fixed_size_binary()
+{
+    let strs = [b"abc".to_vec()];
+    let b: Box<dyn Array> = strs.try_into_arrow_as_type::<FixedSizeBinary<3>>().unwrap();
+    assert_eq!(b.data_type(), &DataType::FixedSizeBinary(3));
+    let round_trip: Vec<Vec<u8>> = b.try_into_collection_as_type::<FixedSizeBinary<3>>().unwrap();
+    assert_eq!(round_trip, strs);
+}
+
+#[test]
 fn test_large_vec()
 {
     let ints = vec![vec![1, 2, 3]];
@@ -116,4 +126,19 @@ fn test_large_vec_nested()
     ))));
     let round_trip: Vec<Vec<Vec<u8>>> = b.try_into_collection_as_type::<LargeVec<LargeBinary>>().unwrap();
     assert_eq!(round_trip, strs);
+}
+
+#[test]
+fn test_fixed_size_vec()
+{
+    let ints = vec![vec![1, 2, 3]];
+    let b: Box<dyn Array> = ints.try_into_arrow_as_type::<FixedSizeVec<i32, 3>>().unwrap();
+    assert_eq!(b.data_type(),
+        &DataType::FixedSizeList(Box::new(Field::new(
+            "item",
+            DataType::Int32,
+            false)),
+        3));
+    let round_trip: Vec<Vec<i32>> = b.try_into_collection_as_type::<FixedSizeVec<i32, 3>>().unwrap();
+    assert_eq!(round_trip, ints);
 }

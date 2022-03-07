@@ -1,6 +1,6 @@
-use arrow2::datatypes::*;
 use arrow2_convert::ArrowField;
-use arrow2_convert::field::{LargeBinary, LargeString, LargeVec};
+use arrow2_convert::field::{LargeBinary, LargeString, LargeVec, FixedSizeBinary, FixedSizeVec};
+use arrow2::datatypes::*;
 
 #[test]
 fn test_schema_types() {
@@ -37,12 +37,18 @@ fn test_schema_types() {
         // large binary
         #[arrow_field(override="LargeBinary")]
         large_binary: Vec<u8>,
+        // fixed size binary
+        #[arrow_field(override="FixedSizeBinary<3>")]
+        fixed_size_binary: Vec<u8>,        
         // large string
         #[arrow_field(override="LargeString")]
         large_string: String,    
         // large vec
         #[arrow_field(override="LargeVec<i64>")]
-        large_vec: Vec<i64>
+        large_vec: Vec<i64>,
+        // fixed size vec
+        #[arrow_field(override="FixedSizeVec<i64, 3>")]
+        fixed_size_vec: Vec<i64>        
     }
 
     #[derive(Debug, ArrowField)]
@@ -81,6 +87,11 @@ fn test_schema_types() {
 
     impl arrow2_convert::serialize::ArrowSerialize for CustomType {
         type MutableArrayType = arrow2::array::MutablePrimitiveArray<u64>;
+
+        #[inline]
+        fn new_array() -> Self::MutableArrayType {
+            unimplemented!();
+        }
 
         #[inline]
         fn arrow_serialize(
@@ -192,10 +203,16 @@ fn test_schema_types() {
                 false
             ),
             Field::new("large_binary", DataType::LargeBinary, false),
+            Field::new("fixed_size_binary", DataType::FixedSizeBinary(3), false),
             Field::new("large_string", DataType::LargeUtf8, false),
             Field::new(
                 "large_vec",
                 DataType::LargeList(Box::new(Field::new("item", DataType::Int64, false))),
+                false
+            ),
+            Field::new(
+                "fixed_size_vec",
+                DataType::FixedSizeList(Box::new(Field::new("item", DataType::Int64, false)), 3),
                 false
             ),
         ])
