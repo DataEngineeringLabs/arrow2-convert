@@ -1,13 +1,12 @@
+use arrow2::array::*;
+use arrow2_convert::deserialize::{arrow_array_deserialize_iterator, TryIntoCollection};
+use arrow2_convert::field::{FixedSizeBinary, FixedSizeVec, LargeBinary, LargeString, LargeVec};
+use arrow2_convert::serialize::TryIntoArrow;
 /// Complex example that uses the following features:
 ///
 /// - Deeply Nested structs and lists
 /// - Custom types
-
 use arrow2_convert::ArrowField;
-use arrow2_convert::deserialize::{arrow_array_deserialize_iterator, TryIntoCollection};
-use arrow2_convert::field::{LargeBinary, LargeString, LargeVec, FixedSizeBinary, FixedSizeVec};
-use arrow2_convert::serialize::TryIntoArrow;
-use arrow2::array::*;
 use std::borrow::Borrow;
 
 #[derive(Debug, Clone, PartialEq, ArrowField)]
@@ -41,20 +40,20 @@ pub struct Root {
     // int 32 array
     int32_array: Vec<i32>,
     // large binary
-    #[arrow_field(override="LargeBinary")]
+    #[arrow_field(override = "LargeBinary")]
     large_binary: Vec<u8>,
     // fixed size binary
-    #[arrow_field(override="FixedSizeBinary<3>")]
-    fixed_size_binary: Vec<u8>,            
+    #[arrow_field(override = "FixedSizeBinary<3>")]
+    fixed_size_binary: Vec<u8>,
     // large string
-    #[arrow_field(override="LargeString")]
-    large_string: String,    
+    #[arrow_field(override = "LargeString")]
+    large_string: String,
     // large vec
-    #[arrow_field(override="LargeVec<i64>")]
+    #[arrow_field(override = "LargeVec<i64>")]
     large_vec: Vec<i64>,
     // fixed size vec
-    #[arrow_field(override="FixedSizeVec<i64, 3>")]
-    fixed_size_vec: Vec<i64>,    
+    #[arrow_field(override = "FixedSizeVec<i64, 3>")]
+    fixed_size_vec: Vec<i64>,
 }
 
 #[derive(Debug, Clone, PartialEq, ArrowField)]

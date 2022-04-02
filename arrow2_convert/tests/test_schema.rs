@@ -1,6 +1,6 @@
-use arrow2_convert::ArrowField;
-use arrow2_convert::field::{LargeBinary, LargeString, LargeVec, FixedSizeBinary, FixedSizeVec};
 use arrow2::datatypes::*;
+use arrow2_convert::field::{FixedSizeBinary, FixedSizeVec, LargeBinary, LargeString, LargeVec};
+use arrow2_convert::ArrowField;
 
 #[test]
 fn test_schema_types() {
@@ -35,20 +35,20 @@ fn test_schema_types() {
         // int 32 array
         int32_array: Vec<i32>,
         // large binary
-        #[arrow_field(override="LargeBinary")]
+        #[arrow_field(override = "LargeBinary")]
         large_binary: Vec<u8>,
         // fixed size binary
-        #[arrow_field(override="FixedSizeBinary<3>")]
-        fixed_size_binary: Vec<u8>,        
+        #[arrow_field(override = "FixedSizeBinary<3>")]
+        fixed_size_binary: Vec<u8>,
         // large string
-        #[arrow_field(override="LargeString")]
-        large_string: String,    
+        #[arrow_field(override = "LargeString")]
+        large_string: String,
         // large vec
-        #[arrow_field(override="LargeVec<i64>")]
+        #[arrow_field(override = "LargeVec<i64>")]
         large_vec: Vec<i64>,
         // fixed size vec
-        #[arrow_field(override="FixedSizeVec<i64, 3>")]
-        fixed_size_vec: Vec<i64>        
+        #[arrow_field(override = "FixedSizeVec<i64, 3>")]
+        fixed_size_vec: Vec<i64>,
     }
 
     #[derive(Debug, ArrowField)]
@@ -220,18 +220,18 @@ fn test_schema_types() {
 }
 
 #[test]
-fn test_large_string_schema()
-{
+fn test_large_string_schema() {
     use arrow2_convert::field::LargeString;
 
-    assert_eq!(<LargeString as arrow2_convert::field::ArrowField>::data_type(), DataType::LargeUtf8);
+    assert_eq!(
+        <LargeString as arrow2_convert::field::ArrowField>::data_type(),
+        DataType::LargeUtf8
+    );
     assert!(!<LargeString as arrow2_convert::field::ArrowField>::is_nullable());
     assert!(<Option<LargeString> as arrow2_convert::field::ArrowField>::is_nullable());
 
-    assert_eq!(<Vec<LargeString> as arrow2_convert::field::ArrowField>::data_type(), 
-        DataType::List(Box::new(Field::new(
-            "item",
-            DataType::LargeUtf8,
-            false
-    ))));
+    assert_eq!(
+        <Vec<LargeString> as arrow2_convert::field::ArrowField>::data_type(),
+        DataType::List(Box::new(Field::new("item", DataType::LargeUtf8, false)))
+    );
 }

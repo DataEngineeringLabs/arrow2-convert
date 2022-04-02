@@ -30,7 +30,7 @@ pub struct Field {
 fn arrow_field(field: &syn::Field) -> syn::Type {
     for attr in &field.attrs {
         if let Ok(meta) = attr.parse_meta() {
-            if meta.path().is_ident("arrow_field") { 
+            if meta.path().is_ident("arrow_field") {
                 if let Meta::List(list) = meta {
                     for nested in list.nested {
                         if let syn::NestedMeta::Meta(meta) = nested {
@@ -41,9 +41,9 @@ fn arrow_field(field: &syn::Field) -> syn::Type {
                                     ..
                                 }) => {
                                     if path.is_ident("override") {
-                                        return syn::parse_str(&string.value()).unwrap_or_abort()
+                                        return syn::parse_str(&string.value()).unwrap_or_abort();
                                     }
-                                },
+                                }
                                 _ => {
                                     use syn::spanned::Spanned;
                                     abort!(meta.span(), "Unexpected attribute");
@@ -64,13 +64,13 @@ impl Input {
         let mut traits_to_derive = TraitsToDerive::All;
 
         let fields = match input.data {
-            Data::Struct(s) => s.fields.iter()
-                .map(|f|
-                    Field { 
-                        syn: f.clone(),
-                        field_type: arrow_field(f)
-                    } 
-                )
+            Data::Struct(s) => s
+                .fields
+                .iter()
+                .map(|f| Field {
+                    syn: f.clone(),
+                    field_type: arrow_field(f),
+                })
                 .collect::<Vec<_>>(),
             _ => abort!(
                 input.ident.span(),

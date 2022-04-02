@@ -16,6 +16,19 @@ jobs:
       - name: "clippy --all"
         run: cargo clippy --all --tests -- -D warnings
 
+  fmt:
+    name: fmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust
+        run: rustup update stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Install rustfmt
+        run: rustup component add rustfmt
+      - name: Run
+        run: cargo fmt --all -- --check
+
   docker:
     name: Test
     runs-on: ubuntu-latest
