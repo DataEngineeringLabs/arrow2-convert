@@ -17,7 +17,7 @@ use chrono::{NaiveDate, NaiveDateTime};
 pub trait ArrowField {
     /// This should be `Self` except when implementing large offset and fixed placeholder types.
     /// For the later, it should refer to the actual type. For example when the placeholder
-    /// type is LargeString, this should be String. 
+    /// type is LargeString, this should be String.
     type Type;
 
     /// The [`DataType`]
@@ -118,8 +118,7 @@ impl ArrowField for String {
 
 pub struct LargeString {}
 
-impl ArrowField for LargeString
-{
+impl ArrowField for LargeString {
     type Type = String;
 
     #[inline]
@@ -200,12 +199,12 @@ where
 }
 
 pub struct LargeVec<T> {
-    d: std::marker::PhantomData<T>
+    d: std::marker::PhantomData<T>,
 }
 
 impl<T> ArrowField for LargeVec<T>
 where
-    T: ArrowField + ArrowEnableVecForType
+    T: ArrowField + ArrowEnableVecForType,
 {
     type Type = Vec<<T as ArrowField>::Type>;
 
@@ -216,12 +215,12 @@ where
 }
 
 pub struct FixedSizeVec<T, const SIZE: usize> {
-    d: std::marker::PhantomData<T>
+    d: std::marker::PhantomData<T>,
 }
 
-impl<T, const SIZE: usize> ArrowField for FixedSizeVec<T, SIZE> 
+impl<T, const SIZE: usize> ArrowField for FixedSizeVec<T, SIZE>
 where
-    T: ArrowField + ArrowEnableVecForType
+    T: ArrowField + ArrowEnableVecForType,
 {
     type Type = Vec<<T as ArrowField>::Type>;
 
@@ -246,4 +245,7 @@ impl<T> ArrowEnableVecForType for Option<T> where T: ArrowField + ArrowEnableVec
 // Blanket implementation for Vec<Vec<T>> if vectors are enabled for T
 impl<T> ArrowEnableVecForType for Vec<T> where T: ArrowField + ArrowEnableVecForType {}
 impl<T> ArrowEnableVecForType for LargeVec<T> where T: ArrowField + ArrowEnableVecForType {}
-impl<T, const SIZE: usize> ArrowEnableVecForType for FixedSizeVec<T, SIZE> where T: ArrowField + ArrowEnableVecForType {}
+impl<T, const SIZE: usize> ArrowEnableVecForType for FixedSizeVec<T, SIZE> where
+    T: ArrowField + ArrowEnableVecForType
+{
+}

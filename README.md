@@ -1,46 +1,39 @@
 # arrow2_convert
 
-This crate provides convenience methods on top of [`arrow2`](https://github.com/jorgecarleitao/arrow2) to facilitate conversion between nested rust types and the Arrow memory format.  
+Provides an API on top of [`arrow2`](https://github.com/jorgecarleitao/arrow2) to convert between rust types and Arrow.
 
-The following features are supported:
+The Arrow ecosystem provides many ways to convert between Arrow and other popular formats across several languages. This project aims to serve the need for rust-centric data pipelines to easily convert to/from Arrow via an auto-generated compile-time schema.
 
-- arrow2 primitive types can be used as struct fields.
-    - numeric types: [`u8`], [`u16`], [`u32`], [`u64`], [`i8`], [`i16`], [`i32`], [`i64`], [`f32`], [`f64`]
-    - other types: [`bool`], [`String`], [`Binary`]
-    - temporal types: [`chrono::NaiveDate`], [`chrono::NaiveDateTime`]
-- Custom types can be used as fields by implementing the ArrowField, ArrowSerialize, and ArrowDeserialize traits.
-- Optional fields.
-- Deep nesting via structs which derive the `ArrowField` macro or by Vec<T>.
-- Large types:
-    - [`LargeBinary`], [`LargeString`], [`LargeList`]
-    - These can be used via the "override" attribute. Please see the [complex_example.rs](./arrow2_convert/tests/complex_example.rs) for usage.
-- Fixed size types:
-    - [`FixedSizeBinary`]
-    - [`FixedSizeList`]
-        - This is supported for a fixed size `Vec<T>` via the `FixedSizeVec` type override.
-        - Note: nesting of [`FixedSizeList`] is not supported.
+## Design
 
-The following are not yet supported. 
+Types that implements the `ArrowField`, `ArrowSerialize` and `ArrowDeserialize` traits can be converted to/from Arrow via the `try_into_arrow` and the `try_into_collection` methods. 
 
-- Rust enums, slices, references
+The `ArrowField` implementation for a type defines the Arrow schema. The `ArrowSerialize` and `ArrowDeserialize` implementations provide the conversion logic via arrow2's data structures.
 
-Note: This is not an exclusive list. Please see the repo issues for current work in progress and add proposals for features that would be useful for your project.
+## Features
 
-## API
+- A derive macro, `ArrowField`, can generate implementations of the above traits for structures. Support for enums is in progress. 
+- Implementations are provided for Arrow primitives
+    - Numeric types
+        - [`u8`], [`u16`], [`u32`], [`u64`], [`i8`], [`i16`], [`i32`], [`i64`], [`f32`], [`f64`]
+    - Other types: 
+        - [`bool`], [`String`], [`Binary`]
+    - Temporal types: 
+        - [`chrono::NaiveDate`], [`chrono::NaiveDateTime`]
+- Blanket implementations are provided for types that implement the above traits:
+    - Option<T>
+    - Vec<T>
+- Large Arrow types [`LargeBinary`], [`LargeString`], [`LargeList`] are supported via the `override` attribute. Please see the [complex_example.rs](./arrow2_convert/tests/complex_example.rs) for usage.
+- Fixed size types [`FixedSizeBinary`], [`FixedSizeList`] are supported via the `FixedSizeVec` type override.
+    - Note: nesting of [`FixedSizeList`] is not supported.
+- Scalars and enums are in progress
+- Support for generics, slices and reference is currently missing.
 
-The API is inspired by serde with the necessary modifications to generate a compile-time Arrow schema and to integrate with arrow2 data structures.
+This is not an exhaustive list. Please open an issue if you need a feature.
 
-Types (currently only structures) can be annotated with the `ArrowField` procedural macro to derive the following:
+## Memory
 
-- A typed `arrow2::array::MutableArray` for serialization
-- A typed iterator for deserialization
-- Implementations of the `ArrowField`, `ArrowSerialize`, and `ArrowDeserialize` traits.
-
-Serialization can be performed by using the `arrow_serialize` method from the `TryIntoArrow` trait or by manually pushing elements to the generated `arrow2::array::MutableArray`.
-
-Deserialization can be performed by using the `try_into_collection` method from the `TryIntoCollection` trait or by iterating through the iterator provided by `arrow_array_deserialize_iterator`.
-
-Both serialization and deserialization perform memory copies for the elements converted. For example, iterating through the deserialize iterator will copy memory from the arrow2 array, into the structure that the iterator returns. Deserialization can be more efficient by supporting structs with references.
+Pass-thru conversions perform a single memory copy. Deserialization performs a copy from arrow2 to the destination. Serialization performs a copy from the source to arrow2. In-place deserialization is theoretically possible but currently not supported.
 
 ## Example
 
@@ -82,39 +75,27 @@ fn test_simple_roundtrip() {
 }
 ```
 
-## Implementation details
+## Internals
 
-The goal is to allow the Arrow memory model to be used by an existing rust type tree and to facilitate type conversions, when needed. Ideally, for performance, if the arrow memory model or specifically the API provided by the arrow2 crate exactly matches the custom type tree, then no conversions should be performed.
+### Similarities with Serde
 
-To achieve this, the following approach is used:
+The design is inspired by serde. The `ArrowSerialize` and `ArrowDeserialize` are analogs of serde's `Serialize` and `Deserialize` respectively.
 
-- Introduce three traits, `ArrowField`, `ArrowSerialize`, and `ArrowDeserialize` that can be implemented by types that can be represented in Arrow. Implementations are provided for the built-in arrow2` types, and custom implementations can be provided for other types.
+However unlike serde's traits provide an exhaustive and flexible mapping to the serde data model, arrow2_convert's traits provide a much more narrower mapping to arrow2's data structures.
 
-- Blanket implementations are provided for types that recursively contain types that implement the above traits eg. [`Option<T>`], [`Vec<T>`], [`Vec<Option<T>>`], [`Vec<Vec<Option<T>>>`], etc. The blanket implementation needs be enabled by the `arrow_enable_vec_for_type` macro on the primitive type. This explicit enabling is needed since Vec<u8> is a special type in Arrow, and implementation specialization is not yet supported in rust to allow blanket implementations to coexist with more specialized implementations.
+Specifically, the `ArrowSerialize` trait provides the logic to serialize a type to the corresponding `arrow2::array::MutableArray`. The `ArrowDeserialize` trait deserializes a type from the corresponding `arrow2::array::ArrowArray`. 
 
-- Supporting traits to expose functionality not exposed via arrow2's traits.
 
-### Implementing Large Types
+### Workarounds
 
-Ideally for code reusability, we wouldn’t have to reimplement `ArrowSerialize` and `ArrowDeserialize` for large and fixed size types since the primitive types are the same. However, this requires the trait functions to take a generic bounded mutable array as an argument instead of a single array type. This requires the `ArrowSerialize` and `ArrowDeserialize` implementations to be able to specify the bounds as part of the associated type, which is not possible without generic associated types.
+Features such as partial implementation specialization and generic associated types (currently only available in nightly builds) can greatly simplify the underlying implementation.
+
+For example custom types need to explicitly enable Vec<T> serialization via the `arrow_enable_vec_for_type` macro on the primitive type. This is needed since Vec<u8> is a special type in Arrow, but without implementation specialization there's no way to special-case it.
+
+Availability of generaic associated types would simplify the implementation for large and fixed types, since a generic MutableArray can be defined. Ideally for code reusability, we wouldn’t have to reimplement `ArrowSerialize` and `ArrowDeserialize` for large and fixed size types since the primitive types are the same. However, this requires the trait functions to take a generic bounded mutable array as an argument instead of a single array type. This requires the `ArrowSerialize` and `ArrowDeserialize` implementations to be able to specify the bounds as part of the associated type, which is not possible without generic associated types.
 
 As a result, we’re forced to sacrifice code reusability and introduce a little bit of complexity by providing separate `ArrowSerialize` and `ArrowDeserialize` implementations for large and fixed size types via placeholder structures. This also requires introducing the `Type` associated type to `ArrowField` so that the arrow type can be overriden via a macro field attribute without affecting the actual type.
 
-### Why not serde?
-
-While serde is the de-facto serialization framework in Rust, it introduces a layer of indirection.
-Specifically, arrow2 uses Apache Arrow's in-memory columnar format, while serde is row based. Using serde requires a Serializer/Deserializer implementation around each arrow2 MutableArray and Array, leading to a heavyweight wrapper around simple array manipulations.
-
-Arrow's in-memory format can be serialized/deserialized to a wide variety of formats including Apache Parquet, JSON, Apache Avro, Arrow IPC, and Arrow FFI specification.
-
-One of the objectives of this crate is to derive a compile-time Arrow schema for Rust structs, which we achieve via the `ArrowField` trait.
-Other crates that integrate serde for example [serde_arrow](https://github.com/chmp/serde_arrow), 
-either need an explicit schema or need to infer the schema at runtime.
-
-Lastly, the serde ecosystem comes with its own default representations for temporal times, that differ from the default representations of arrow2. It seemed best to avoid any conflicts by introducing a new set of traits.
-
-The biggest disadvantage of not using Serde is for types in codebases that already implement serde traits.
-They will need to additionally reimplement the traits needed by this crate.
 ## License
 
 Licensed under either of

@@ -8,7 +8,7 @@ authors = [
 edition = "2021"
 license = "Apache-2.0 OR MIT"
 keywords = ["Arrow", "arrow2"]
-repository = "https://github.com/DataEngineeringLabs/arrow2-convert/arrow2_convert_derive"
+repository = "https://github.com/DataEngineeringLabs/arrow2-convert"
 description = "Proc macros for arrow2_convert"
 
 [lib]

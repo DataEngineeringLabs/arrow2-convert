@@ -18,7 +18,10 @@ pub trait ArrowSerialize: ArrowField {
     fn new_array() -> Self::MutableArrayType;
 
     /// Serialize this field to arrow
-    fn arrow_serialize(v: &<Self as ArrowField>::Type, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()>;
+    fn arrow_serialize(
+        v: &<Self as ArrowField>::Type,
+        array: &mut Self::MutableArrayType,
+    ) -> arrow2::error::Result<()>;
 }
 
 /// This trait provides an interface that's exposed by all Mutable lists but that are not
@@ -79,7 +82,10 @@ where
     }
 
     #[inline]
-    fn arrow_serialize(v: &<Self as ArrowField>::Type, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+    fn arrow_serialize(
+        v: &<Self as ArrowField>::Type,
+        array: &mut Self::MutableArrayType,
+    ) -> arrow2::error::Result<()> {
         match v.as_ref() {
             Some(t) => <T as ArrowSerialize>::arrow_serialize(t, array),
             None => {
@@ -115,8 +121,7 @@ impl ArrowSerialize for String {
     }
 }
 
-impl ArrowSerialize for LargeString
-{
+impl ArrowSerialize for LargeString {
     type MutableArrayType = MutableUtf8Array<i64>;
 
     #[inline]
@@ -125,7 +130,10 @@ impl ArrowSerialize for LargeString
     }
 
     #[inline]
-    fn arrow_serialize(v: &String, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+    fn arrow_serialize(
+        v: &String,
+        array: &mut Self::MutableArrayType,
+    ) -> arrow2::error::Result<()> {
         array.try_push(Some(v))
     }
 }
@@ -165,7 +173,7 @@ impl ArrowSerialize for NaiveDate {
     fn new_array() -> Self::MutableArrayType {
         Self::MutableArrayType::from(<Self as ArrowField>::data_type())
     }
-    
+
     #[inline]
     fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
         array.try_push(Some(
@@ -189,8 +197,7 @@ impl ArrowSerialize for Vec<u8> {
     }
 }
 
-impl ArrowSerialize for LargeBinary
-{
+impl ArrowSerialize for LargeBinary {
     type MutableArrayType = MutableBinaryArray<i64>;
 
     #[inline]
@@ -199,7 +206,10 @@ impl ArrowSerialize for LargeBinary
     }
 
     #[inline]
-    fn arrow_serialize(v: &Vec<u8>, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+    fn arrow_serialize(
+        v: &Vec<u8>,
+        array: &mut Self::MutableArrayType,
+    ) -> arrow2::error::Result<()> {
         array.try_push(Some(v))
     }
 }
@@ -213,17 +223,19 @@ impl<const SIZE: usize> ArrowSerialize for FixedSizeBinary<SIZE> {
     }
 
     #[inline]
-    fn arrow_serialize(v: &Vec<u8>, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+    fn arrow_serialize(
+        v: &Vec<u8>,
+        array: &mut Self::MutableArrayType,
+    ) -> arrow2::error::Result<()> {
         array.try_push(Some(v))
     }
 }
-
 
 // Blanket implementation for Vec
 impl<T> ArrowSerialize for Vec<T>
 where
     T: ArrowSerialize + ArrowEnableVecForType + 'static,
-    <T as ArrowSerialize>::MutableArrayType: Default
+    <T as ArrowSerialize>::MutableArrayType: Default,
 {
     type MutableArrayType = MutableListArray<i32, <T as ArrowSerialize>::MutableArrayType>;
 
@@ -232,11 +244,14 @@ where
         Self::MutableArrayType::new_with_field(
             <T as ArrowSerialize>::new_array(),
             "item",
-            <T as ArrowField>::is_nullable()
+            <T as ArrowField>::is_nullable(),
         )
     }
 
-    fn arrow_serialize(v: &<Self as ArrowField>::Type, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+    fn arrow_serialize(
+        v: &<Self as ArrowField>::Type,
+        array: &mut Self::MutableArrayType,
+    ) -> arrow2::error::Result<()> {
         let values = array.mut_values();
         for i in v.iter() {
             <T as ArrowSerialize>::arrow_serialize(i, values)?;
@@ -248,7 +263,7 @@ where
 impl<T> ArrowSerialize for LargeVec<T>
 where
     T: ArrowSerialize + ArrowEnableVecForType + 'static,
-    <T as ArrowSerialize>::MutableArrayType: Default
+    <T as ArrowSerialize>::MutableArrayType: Default,
 {
     type MutableArrayType = MutableListArray<i64, <T as ArrowSerialize>::MutableArrayType>;
 
@@ -257,11 +272,14 @@ where
         Self::MutableArrayType::new_with_field(
             <T as ArrowSerialize>::new_array(),
             "item",
-            <T as ArrowField>::is_nullable()
+            <T as ArrowField>::is_nullable(),
         )
     }
 
-    fn arrow_serialize(v: &<Self as ArrowField>::Type, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+    fn arrow_serialize(
+        v: &<Self as ArrowField>::Type,
+        array: &mut Self::MutableArrayType,
+    ) -> arrow2::error::Result<()> {
         let values = array.mut_values();
         for i in v.iter() {
             <T as ArrowSerialize>::arrow_serialize(i, values)?;
@@ -273,7 +291,7 @@ where
 impl<T, const SIZE: usize> ArrowSerialize for FixedSizeVec<T, SIZE>
 where
     T: ArrowSerialize + ArrowEnableVecForType + 'static,
-    <T as ArrowSerialize>::MutableArrayType: Default
+    <T as ArrowSerialize>::MutableArrayType: Default,
 {
     type MutableArrayType = MutableFixedSizeListArray<<T as ArrowSerialize>::MutableArrayType>;
 
@@ -283,11 +301,14 @@ where
             <T as ArrowSerialize>::new_array(),
             "item",
             <T as ArrowField>::is_nullable(),
-            SIZE
+            SIZE,
         )
     }
 
-    fn arrow_serialize(v: &<Self as ArrowField>::Type, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+    fn arrow_serialize(
+        v: &<Self as ArrowField>::Type,
+        array: &mut Self::MutableArrayType,
+    ) -> arrow2::error::Result<()> {
         let values = array.mut_values();
         for i in v.iter() {
             <T as ArrowSerialize>::arrow_serialize(i, values)?;
@@ -352,7 +373,12 @@ where
 }
 
 // internal helper method to extend a mutable array
-fn arrow_serialize_extend_internal<'a, A: 'static, T: ArrowSerialize + ArrowField<Type = A> + 'static, I: IntoIterator<Item = &'a A>>(
+fn arrow_serialize_extend_internal<
+    'a,
+    A: 'static,
+    T: ArrowSerialize + ArrowField<Type = A> + 'static,
+    I: IntoIterator<Item = &'a A>,
+>(
     into_iter: I,
     array: &mut <T as ArrowSerialize>::MutableArrayType,
 ) -> arrow2::error::Result<()> {
@@ -365,8 +391,13 @@ fn arrow_serialize_extend_internal<'a, A: 'static, T: ArrowSerialize + ArrowFiel
 }
 
 // internal helper method to serialize to a mutable array
-fn arrow_serialize_internal<'a, A: 'static, T: ArrowSerialize + ArrowField<Type = A> + 'static, I: IntoIterator<Item = &'a A>>(
-    into_iter: I
+fn arrow_serialize_internal<
+    'a,
+    A: 'static,
+    T: ArrowSerialize + ArrowField<Type = A> + 'static,
+    I: IntoIterator<Item = &'a A>,
+>(
+    into_iter: I,
 ) -> arrow2::error::Result<<T as ArrowSerialize>::MutableArrayType> {
     let mut arr = <T as ArrowSerialize>::new_array();
     arrow_serialize_extend_internal::<A, T, I>(into_iter, &mut arr)?;
@@ -374,13 +405,15 @@ fn arrow_serialize_internal<'a, A: 'static, T: ArrowSerialize + ArrowField<Type 
 }
 
 /// Top-level API to serialize to Arrow
-pub trait TryIntoArrow<'a, ArrowArray, Element> 
-    where Self: IntoIterator<Item = &'a Element>,
-        Element: 'static
+pub trait TryIntoArrow<'a, ArrowArray, Element>
+where
+    Self: IntoIterator<Item = &'a Element>,
+    Element: 'static,
 {
     fn try_into_arrow(self) -> arrow2::error::Result<ArrowArray>;
-    fn try_into_arrow_as_type<ArrowType>(self) -> arrow2::error::Result<ArrowArray> 
-        where ArrowType: ArrowSerialize + ArrowField<Type = Element> + 'static;
+    fn try_into_arrow_as_type<ArrowType>(self) -> arrow2::error::Result<ArrowArray>
+    where
+        ArrowType: ArrowSerialize + ArrowField<Type = Element> + 'static;
 }
 
 impl<'a, Element, Collection> TryIntoArrow<'a, Arc<dyn Array>, Element> for Collection
@@ -392,8 +425,9 @@ where
         Ok(arrow_serialize_internal::<Element, Element, Collection>(self)?.as_arc())
     }
 
-    fn try_into_arrow_as_type<Field>(self) -> arrow2::error::Result<Arc<dyn Array>> 
-        where Field: ArrowSerialize + ArrowField<Type = Element> + 'static
+    fn try_into_arrow_as_type<Field>(self) -> arrow2::error::Result<Arc<dyn Array>>
+    where
+        Field: ArrowSerialize + ArrowField<Type = Element> + 'static,
     {
         Ok(arrow_serialize_internal::<Element, Field, Collection>(self)?.as_arc())
     }
@@ -408,8 +442,9 @@ where
         Ok(arrow_serialize_internal::<Element, Element, Collection>(self)?.as_box())
     }
 
-    fn try_into_arrow_as_type<E>(self) -> arrow2::error::Result<Box<dyn Array>> 
-        where E: ArrowSerialize + ArrowField<Type = Element> + 'static
+    fn try_into_arrow_as_type<E>(self) -> arrow2::error::Result<Box<dyn Array>>
+    where
+        E: ArrowSerialize + ArrowField<Type = Element> + 'static,
     {
         Ok(arrow_serialize_internal::<Element, E, Collection>(self)?.as_box())
     }
