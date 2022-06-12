@@ -290,7 +290,7 @@ where
     for<'b> &'b <ArrowType as ArrowDeserialize>::ArrayType: IntoIterator,
 {
     if &<ArrowType as ArrowField>::data_type() != arr.data_type() {
-        Err(arrow2::error::ArrowError::InvalidArgumentError(
+        Err(arrow2::error::Error::InvalidArgumentError(
             "Data type mismatch".to_string(),
         ))
     } else {
