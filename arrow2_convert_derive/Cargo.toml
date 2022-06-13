@@ -1,6 +1,6 @@
 [package]
 name = "arrow2_convert_derive"
-version = "0.1.0"
+version = "0.2.0"
 authors = [
     "Jorge Leitao <jorgecarleitao@gmail.com>",
     "Chandra Penke <chandrapenke@gmail.com>"
