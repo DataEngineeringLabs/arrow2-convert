@@ -92,7 +92,7 @@ where
     fn arrow_deserialize(
         v: <&Self::ArrayType as IntoIterator>::Item,
     ) -> Option<<Self as ArrowField>::Type> {
-        Some(Self::arrow_deserialize_internal(v))
+        Self::arrow_deserialize_internal(v).map(Some)
     }
 
     #[inline]
@@ -194,14 +194,10 @@ where
     for<'a> &'a T::ArrayType: IntoIterator,
 {
     use std::ops::Deref;
-    match v {
-        Some(t) => {
-            arrow_array_deserialize_iterator_internal::<<T as ArrowField>::Type, T>(t.deref())
-                .ok()
-                .map(|i| i.collect::<Vec<<T as ArrowField>::Type>>())
-        }
-        None => None,
-    }
+    v.map(|t| {
+        arrow_array_deserialize_iterator_internal::<<T as ArrowField>::Type, T>(t.deref())
+            .collect::<Vec<<T as ArrowField>::Type>>()
+    })
 }
 
 // Blanket implementation for Vec
@@ -270,15 +266,13 @@ where
 /// Helper to return an iterator for elements from a [`arrow2::array::Array`].
 fn arrow_array_deserialize_iterator_internal<'a, Element, Field>(
     b: &'a dyn arrow2::array::Array,
-) -> arrow2::error::Result<impl Iterator<Item = Element> + 'a>
+) -> impl Iterator<Item = Element> + 'a
 where
     Field: ArrowDeserialize + ArrowField<Type = Element> + 'static,
     for<'b> &'b <Field as ArrowDeserialize>::ArrayType: IntoIterator,
 {
-    Ok(
-        <<Field as ArrowDeserialize>::ArrayType as ArrowArray>::iter_from_array_ref(b)
-            .map(<Field as ArrowDeserialize>::arrow_deserialize_internal),
-    )
+    <<Field as ArrowDeserialize>::ArrayType as ArrowArray>::iter_from_array_ref(b)
+        .map(<Field as ArrowDeserialize>::arrow_deserialize_internal)
 }
 
 pub fn arrow_array_deserialize_iterator_as_type<'a, Element, ArrowType>(
@@ -297,7 +291,7 @@ where
         Ok(arrow_array_deserialize_iterator_internal::<
             Element,
             ArrowType,
-        >(arr)?)
+        >(arr))
     }
 }
 

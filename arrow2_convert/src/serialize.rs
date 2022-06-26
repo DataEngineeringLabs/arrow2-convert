@@ -1,4 +1,5 @@
 use arrow2::array::*;
+use arrow2::chunk::Chunk;
 use chrono::{NaiveDate, NaiveDateTime};
 use std::sync::Arc;
 
@@ -447,5 +448,59 @@ where
         E: ArrowSerialize + ArrowField<Type = Element> + 'static,
     {
         Ok(arrow_serialize_internal::<Element, E, Collection>(self)?.as_box())
+    }
+}
+
+impl<'a, Element, Collection> TryIntoArrow<'a, Chunk<Arc<dyn Array>>, Element> for Collection
+where
+    Element: ArrowSerialize + ArrowField<Type = Element> + 'static,
+    Collection: IntoIterator<Item = &'a Element>,
+{
+    fn try_into_arrow(self) -> arrow2::error::Result<Chunk<Arc<dyn Array>>> {
+        Ok(Chunk::new(vec![arrow_serialize_internal::<
+            Element,
+            Element,
+            Collection,
+        >(self)?
+        .as_arc()]))
+    }
+
+    fn try_into_arrow_as_type<Field>(self) -> arrow2::error::Result<Chunk<Arc<dyn Array>>>
+    where
+        Field: ArrowSerialize + ArrowField<Type = Element> + 'static,
+    {
+        Ok(Chunk::new(vec![arrow_serialize_internal::<
+            Element,
+            Field,
+            Collection,
+        >(self)?
+        .as_arc()]))
+    }
+}
+
+impl<'a, Element, Collection> TryIntoArrow<'a, Chunk<Box<dyn Array>>, Element> for Collection
+where
+    Element: ArrowSerialize + ArrowField<Type = Element> + 'static,
+    Collection: IntoIterator<Item = &'a Element>,
+{
+    fn try_into_arrow(self) -> arrow2::error::Result<Chunk<Box<dyn Array>>> {
+        Ok(Chunk::new(vec![arrow_serialize_internal::<
+            Element,
+            Element,
+            Collection,
+        >(self)?
+        .as_box()]))
+    }
+
+    fn try_into_arrow_as_type<E>(self) -> arrow2::error::Result<Chunk<Box<dyn Array>>>
+    where
+        E: ArrowSerialize + ArrowField<Type = Element> + 'static,
+    {
+        Ok(Chunk::new(vec![arrow_serialize_internal::<
+            Element,
+            E,
+            Collection,
+        >(self)?
+        .as_box()]))
     }
 }

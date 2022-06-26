@@ -7,6 +7,7 @@ use arrow2_convert::{
     field::{FixedSizeBinary, FixedSizeVec, LargeString, LargeVec},
     ArrowField,
 };
+use std::sync::Arc;
 
 #[test]
 fn test_nested_optional_struct_array() {
@@ -137,4 +138,72 @@ fn test_fixed_size_vec() {
         .try_into_collection_as_type::<FixedSizeVec<i32, 3>>()
         .unwrap();
     assert_eq!(round_trip, ints);
+}
+
+#[test]
+fn test_primitive_type_vec() {
+    macro_rules! test_int_type {
+        ($t:ty) => {
+            let original_array = vec![1 as $t, 2, 3];
+            let b: Box<dyn Array> = original_array.try_into_arrow().unwrap();
+            let round_trip: Vec<$t> = b.try_into_collection().unwrap();
+            assert_eq!(original_array, round_trip);
+
+            let original_array = vec![Some(1 as $t), None, Some(3)];
+            let b: Box<dyn Array> = original_array.try_into_arrow().unwrap();
+            let round_trip: Vec<Option<$t>> = b.try_into_collection().unwrap();
+            assert_eq!(original_array, round_trip);
+
+            let original_array = vec![Some(1 as $t), None, Some(3)];
+            let b: Arc<dyn Array> = original_array.try_into_arrow().unwrap();
+            let round_trip: Vec<Option<$t>> =
+                b.try_into_collection_as_type::<Option<$t>>().unwrap();
+            assert_eq!(original_array, round_trip);
+        };
+    }
+
+    macro_rules! test_float_type {
+        ($t:ty) => {
+            let original_array = vec![1 as $t, 2., 3.];
+            let b: Box<dyn Array> = original_array.try_into_arrow().unwrap();
+            let round_trip: Vec<$t> = b.try_into_collection().unwrap();
+            assert_eq!(original_array, round_trip);
+
+            let original_array = vec![Some(1 as $t), None, Some(3.)];
+            let b: Box<dyn Array> = original_array.try_into_arrow().unwrap();
+            let round_trip: Vec<Option<$t>> = b.try_into_collection().unwrap();
+            assert_eq!(original_array, round_trip);
+
+            let original_array = vec![Some(1 as $t), None, Some(3.)];
+            let b: Arc<dyn Array> = original_array.try_into_arrow().unwrap();
+            let round_trip: Vec<Option<$t>> = b.try_into_collection().unwrap();
+            assert_eq!(original_array, round_trip);
+        };
+    }
+
+    test_int_type!(i8);
+    test_int_type!(i16);
+    test_int_type!(i32);
+    test_int_type!(i64);
+    test_int_type!(u8);
+    test_int_type!(u16);
+    test_int_type!(u32);
+    test_int_type!(u64);
+    test_float_type!(f32);
+    test_float_type!(f64);
+
+    let original_array = vec![false, true, false];
+    let b: Box<dyn Array> = original_array.try_into_arrow().unwrap();
+    let round_trip: Vec<bool> = b.try_into_collection().unwrap();
+    assert_eq!(original_array, round_trip);
+
+    let original_array = vec![Some(false), Some(true), None];
+    let b: Box<dyn Array> = original_array.try_into_arrow().unwrap();
+    let round_trip: Vec<Option<bool>> = b.try_into_collection().unwrap();
+    assert_eq!(original_array, round_trip);
+
+    let original_array = vec![Some(b"aa".to_vec()), None];
+    let b: Box<dyn Array> = original_array.try_into_arrow().unwrap();
+    let round_trip: Vec<Option<Vec<u8>>> = b.try_into_collection().unwrap();
+    assert_eq!(original_array, round_trip);
 }
