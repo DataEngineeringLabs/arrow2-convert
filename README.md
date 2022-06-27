@@ -18,7 +18,7 @@ For deserializing from arrow, the `TryIntoCollection::try_into_collection` can b
 - A derive macro, `ArrowField`, can generate implementations of the above traits for structures. Support for enums is in progress. 
 - Implementations are provided for Arrow primitives
     - Numeric types
-        - [`u8`], [`u16`], [`u32`], [`u64`], [`i8`], [`i16`], [`i32`], [`i64`], [`f32`], [`f64`]
+        - [`u8`], [`u16`], [`u32`], [`u64`], [`i8`], [`i16`], [`i32`], [`i64`], [`i128`], [`f32`], [`f64`]
     - Other types: 
         - [`bool`], [`String`], [`Binary`]
     - Temporal types: 
