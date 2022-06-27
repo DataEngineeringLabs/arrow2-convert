@@ -18,12 +18,17 @@ fn test_deserialize_iterator() {
     }
 
     let original_array = [S { a1: 1 }, S { a1: 100 }, S { a1: 1000 }];
-
     let b: Box<dyn Array> = original_array.try_into_arrow().unwrap();
-
     let iter = arrow_array_deserialize_iterator::<S>(b.borrow()).unwrap();
-
     for (i, k) in iter.zip(original_array.iter()) {
+        assert_eq!(&i, k);
+    }
+
+    let original_array = [Some(Some(1_i32)), Some(Some(100)), Some(None), None];
+    let expected = [Some(Some(1_i32)), Some(Some(100)), None, None];
+    let b: Box<dyn Array> = original_array.try_into_arrow().unwrap();
+    let iter = arrow_array_deserialize_iterator::<Option<Option<i32>>>(b.borrow()).unwrap();
+    for (i, k) in iter.zip(expected.iter()) {
         assert_eq!(&i, k);
     }
 }
@@ -41,8 +46,12 @@ fn test_deserialize_schema_mismatch_error() {
 
     let arr1 = vec![S1 { a: 1 }, S1 { a: 2 }];
     let arr1: Box<dyn Array> = arr1.try_into_arrow().unwrap();
-
     let result: Result<Vec<S2>> = arr1.try_into_collection();
+    assert!(result.is_err());
+
+    let arr1 = vec![S1 { a: 1 }, S1 { a: 2 }];
+    let arr1: Box<dyn Array> = arr1.try_into_arrow().unwrap();
+    let result: Result<Vec<_>> = arr1.try_into_collection_as_type::<S2>();
     assert!(result.is_err());
 }
 
