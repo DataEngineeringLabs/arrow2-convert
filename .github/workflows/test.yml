@@ -1,6 +1,6 @@
 name: Check and test
 
-on: [push, pull_request]
+on: [pull_request]
 
 jobs:
   clippy:
@@ -8,11 +8,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Install Rust
-        run: rustup update stable
-      - uses: Swatinem/rust-cache@v1
-      - name: Install clippy
-        run: rustup component add clippy
+      - uses: actions-rs/toolchain@v1
+        with: 
+          toolchain: stable
+          components: clippy
       - name: "clippy --all"
         run: cargo clippy --all --tests -- -D warnings
 
@@ -21,42 +20,44 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Install Rust
-        run: rustup update stable
-      - uses: Swatinem/rust-cache@v1
-      - name: Install rustfmt
-        run: rustup component add rustfmt
+      - uses: actions-rs/toolchain@v1
+        with: 
+          toolchain: stable
+          components: rustfmt
       - name: Run
         run: cargo fmt --all -- --check
 
   docker:
     name: Test
     runs-on: ubuntu-latest
-    container:
-      image: amd64/rust
     steps:
       - uses: actions/checkout@v2
-      - name: Cache Cargo
-        uses: actions/cache@v2
-        with:
-          path: /github/home/.cargo
-          # these represent dependencies downloaded by cargo
-          # and thus do not depend on the OS, arch nor rust version.
-          key: cargo-cache-
-      - name: Cache dependencies
-        uses: actions/cache@v2
-        with:
-          path: /github/home/target
-          # these represent compiled steps of both dependencies and arrow
-          # and thus are specific for a particular OS, arch and rust version.
-          key: ${{ runner.os }}-amd64-target-cache-stable
-      - name: Setup toolchain
+      - uses: actions-rs/toolchain@v1
+        with: 
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - uses: taiki-e/install-action@nextest
+      - name: Run
         run: |
-          rustup toolchain install stable
-          rustup default stable
-          rustup component add rustfmt
-      - name: Build
-        run: |
-          export CARGO_HOME="/github/home/.cargo"
-          export CARGO_TARGET_DIR="/github/home/target"
-          cargo test
+          cargo nextest run
+          cargo test --doc
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with: 
+          toolchain: stable
+          components: llvm-tools-preview
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+      - uses: Swatinem/rust-cache@v1
+      - name: Generate code coverage
+        run: cargo llvm-cov --lcov --output-path lcov.info
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
+          files: lcov.info
+          fail_ci_if_error: true
