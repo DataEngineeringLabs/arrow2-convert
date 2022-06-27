@@ -18,6 +18,8 @@ fn test_schema_types() {
         a5: chrono::NaiveDateTime,
         // timestamp(ns, None)
         a6: Option<chrono::NaiveDateTime>,
+        // i128
+        a7: i128,
         // array of date times
         date_time_list: Vec<chrono::NaiveDateTime>,
         // optional list array of optional strings
@@ -122,6 +124,7 @@ fn test_schema_types() {
             Field::new("a4", DataType::Date32, false),
             Field::new("a5", DataType::Timestamp(TimeUnit::Nanosecond, None), false),
             Field::new("a6", DataType::Timestamp(TimeUnit::Nanosecond, None), true),
+            Field::new("a7", DataType::Decimal(32, 32), false),
             Field::new(
                 "date_time_list",
                 DataType::List(Box::new(Field::new(

@@ -9,7 +9,7 @@ The Arrow ecosystem provides many ways to convert between Arrow and other popula
 Types that implement the `ArrowField`, `ArrowSerialize` and `ArrowDeserialize` traits can be converted to/from Arrow. The `ArrowField` implementation for a type defines the Arrow schema. The `ArrowSerialize` and `ArrowDeserialize` implementations provide the conversion logic via arrow2's data structures.
 
 
-For serializing to arrow, the `TryIntoArrow::try_into_arrow` method can be used to serialize any iterable into an `arrow2::Array`, which represents the in-memory Arrow layout or a `arrow2::Chunk`, which represents a column group, `Vec<arrow2::Array>>`. `arrow2::Chunk` can be used with `arrow2` API for other functionality such converting to parquet and arrow flight RPC.
+For serializing to arrow, `TryIntoArrow::try_into_arrow` can be used to serialize any iterable into an `arrow2::Array` or a `arrow2::Chunk`.  `arrow2::Array` represents the in-memory Arrow layout. `arrow2::Chunk` represents a column group and can be used with `arrow2` API for other functionality such converting to parquet and arrow flight RPC.
 
 For deserializing from arrow, the `TryIntoCollection::try_into_collection` can be used to deserialize from an `arrow2::Array` representation into any container that implements `FromIterator`.
 
@@ -34,7 +34,7 @@ For deserializing from arrow, the `TryIntoCollection::try_into_collection` can b
 
 This is not an exhaustive list. Please open an issue if you need a feature.
 
-### A note on nested option times
+### A note on nested option types
 
 Since the Arrow format only supports one level of validity, nested option types such as `Option<Option<T>>` after serialization to Arrow will lose intermediate nesting of None values. For example, `Some(None)` will be serialized to `None`, 
 

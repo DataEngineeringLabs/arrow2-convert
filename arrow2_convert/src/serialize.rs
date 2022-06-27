@@ -36,7 +36,7 @@ pub trait ArrowMutableArray: arrow2::array::MutableArray {
 
 // Macro to facilitate implementation of serializable traits for numeric types and numeric mutable arrays.
 macro_rules! impl_numeric_type {
-    ($physical_type:ty, $logical_type:ident) => {
+    ($physical_type:ty) => {
         impl ArrowSerialize for $physical_type {
             type MutableArrayType = MutablePrimitiveArray<$physical_type>;
 
@@ -97,16 +97,17 @@ where
     }
 }
 
-impl_numeric_type!(u8, UInt8);
-impl_numeric_type!(u16, UInt16);
-impl_numeric_type!(u32, UInt32);
-impl_numeric_type!(u64, UInt64);
-impl_numeric_type!(i8, Int8);
-impl_numeric_type!(i16, Int16);
-impl_numeric_type!(i32, Int32);
-impl_numeric_type!(i64, Int64);
-impl_numeric_type!(f32, Float32);
-impl_numeric_type!(f64, Float64);
+impl_numeric_type!(u8);
+impl_numeric_type!(u16);
+impl_numeric_type!(u32);
+impl_numeric_type!(u64);
+impl_numeric_type!(i8);
+impl_numeric_type!(i16);
+impl_numeric_type!(i32);
+impl_numeric_type!(i128);
+impl_numeric_type!(i64);
+impl_numeric_type!(f32);
+impl_numeric_type!(f64);
 
 impl ArrowSerialize for String {
     type MutableArrayType = MutableUtf8Array<i32>;

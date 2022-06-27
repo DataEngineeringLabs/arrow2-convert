@@ -185,6 +185,7 @@ fn test_primitive_type_vec() {
     test_int_type!(i16);
     test_int_type!(i32);
     test_int_type!(i64);
+    test_int_type!(i128);
     test_int_type!(u8);
     test_int_type!(u16);
     test_int_type!(u32);

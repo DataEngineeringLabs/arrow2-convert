@@ -50,7 +50,7 @@ where
 
 // Macro to facilitate implementation for numeric types and numeric arrays.
 macro_rules! impl_arrow_deserialize_primitive {
-    ($physical_type:ty, $logical_type:ident) => {
+    ($physical_type:ty) => {
         impl ArrowDeserialize for $physical_type {
             type ArrayType = PrimitiveArray<$physical_type>;
 
@@ -103,16 +103,17 @@ where
     }
 }
 
-impl_arrow_deserialize_primitive!(u8, UInt8);
-impl_arrow_deserialize_primitive!(u16, UInt16);
-impl_arrow_deserialize_primitive!(u32, UInt32);
-impl_arrow_deserialize_primitive!(u64, UInt64);
-impl_arrow_deserialize_primitive!(i8, Int8);
-impl_arrow_deserialize_primitive!(i16, Int16);
-impl_arrow_deserialize_primitive!(i32, Int32);
-impl_arrow_deserialize_primitive!(i64, Int64);
-impl_arrow_deserialize_primitive!(f32, Float32);
-impl_arrow_deserialize_primitive!(f64, Float64);
+impl_arrow_deserialize_primitive!(u8);
+impl_arrow_deserialize_primitive!(u16);
+impl_arrow_deserialize_primitive!(u32);
+impl_arrow_deserialize_primitive!(u64);
+impl_arrow_deserialize_primitive!(i8);
+impl_arrow_deserialize_primitive!(i16);
+impl_arrow_deserialize_primitive!(i32);
+impl_arrow_deserialize_primitive!(i64);
+impl_arrow_deserialize_primitive!(i128);
+impl_arrow_deserialize_primitive!(f32);
+impl_arrow_deserialize_primitive!(f64);
 
 impl ArrowDeserialize for String {
     type ArrayType = Utf8Array<i32>;
