@@ -4,7 +4,7 @@ use chrono::{NaiveDate, NaiveDateTime};
 /// Trait implemented by all types that can be used as an Arrow field.
 ///
 /// Implementations are provided for types already supported by the arrow2 crate:
-/// - numeric types: [`u8`], [`u16`], [`u32`], [`u64`], [`i8`], [`i16`], [`i32`], [`i64`], [`f32`], [`f64`]
+/// - numeric types: [`u8`], [`u16`], [`u32`], [`u64`], [`i8`], [`i16`], [`i32`], [`i128`], [`i64`], [`f32`], [`f64`],
 /// - other types: [`bool`], [`String`]
 /// - temporal types: [`chrono::NaiveDate`], [`chrono::NaiveDateTime`]
 ///
@@ -106,6 +106,15 @@ impl_numeric_type_full!(i32, Int32);
 impl_numeric_type_full!(i64, Int64);
 impl_numeric_type_full!(f32, Float32);
 impl_numeric_type_full!(f64, Float64);
+
+impl ArrowField for i128 {
+    type Type = i128;
+
+    #[inline]
+    fn data_type() -> arrow2::datatypes::DataType {
+        arrow2::datatypes::DataType::Decimal(32, 32)
+    }
+}
 
 impl ArrowField for String {
     type Type = String;
