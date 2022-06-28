@@ -1,3 +1,5 @@
+//! Implementation and traits for mapping rust types to Arrow types
+
 use arrow2::datatypes::{DataType, Field};
 use chrono::{NaiveDate, NaiveDateTime};
 
@@ -107,6 +109,7 @@ impl_numeric_type_full!(i64, Int64);
 impl_numeric_type_full!(f32, Float32);
 impl_numeric_type_full!(f64, Float64);
 
+/// Maps a rust i128 to an Arrow Decimal where precision and scale are required.
 pub struct I128<const PRECISION: usize, const SCALE: usize> {}
 
 impl<const PRECISION: usize, const SCALE: usize> ArrowField for I128<PRECISION, SCALE> {
@@ -127,6 +130,7 @@ impl ArrowField for String {
     }
 }
 
+/// Represents the `LargeUtf8` Arrow type
 pub struct LargeString {}
 
 impl ArrowField for LargeString {
@@ -174,6 +178,7 @@ impl ArrowField for Vec<u8> {
     }
 }
 
+/// Represents the `LargeString` Arrow type.
 pub struct LargeBinary {}
 
 impl ArrowField for LargeBinary {
@@ -185,6 +190,7 @@ impl ArrowField for LargeBinary {
     }
 }
 
+/// Represents the `FixedSizeBinary` Arrow type.
 pub struct FixedSizeBinary<const SIZE: usize> {}
 
 impl<const SIZE: usize> ArrowField for FixedSizeBinary<SIZE> {
@@ -209,6 +215,7 @@ where
     }
 }
 
+/// Represents the `LargeList` Arrow type.
 pub struct LargeVec<T> {
     d: std::marker::PhantomData<T>,
 }
@@ -225,6 +232,7 @@ where
     }
 }
 
+/// Represents the `FixedSizeList` Arrow type.
 pub struct FixedSizeVec<T, const SIZE: usize> {
     d: std::marker::PhantomData<T>,
 }

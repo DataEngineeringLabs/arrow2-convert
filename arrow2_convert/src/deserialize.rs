@@ -1,4 +1,4 @@
-// Implementations of derive traits for arrow2 built-in types
+//! Implementation and traits for deserializing from Arrow.
 
 use arrow2::array::*;
 use chrono::{NaiveDate, NaiveDateTime};
@@ -11,6 +11,7 @@ where
     Self::ArrayType: ArrowArray,
     for<'a> &'a Self::ArrayType: IntoIterator,
 {
+    /// The `arrow2::Array` type corresponding to this field
     type ArrayType;
 
     /// Deserialize this field from arrow
@@ -19,12 +20,13 @@ where
     ) -> Option<<Self as ArrowField>::Type>;
 
     #[inline]
-    // For internal use only
-    //
-    // This is an ugly hack to allow generating a blanket Option<T> deserialize.
-    // Ideally we would be able to capture the optional field of the iterator via
-    // something like for<'a> &'a T::ArrayType: IntoIterator<Item=Option<E>>,
-    // However, the E parameter seems to confuse the borrow checker if it's a reference.
+    #[doc(hidden)]
+    /// For internal use only
+    ///
+    /// This is an ugly hack to allow generating a blanket Option<T> deserialize.
+    /// Ideally we would be able to capture the optional field of the iterator via
+    /// something like for<'a> &'a T::ArrayType: IntoIterator<Item=Option<E>>,
+    /// However, the E parameter seems to confuse the borrow checker if it's a reference.
     fn arrow_deserialize_internal(
         v: <&Self::ArrayType as IntoIterator>::Item,
     ) -> <Self as ArrowField>::Type {
@@ -267,7 +269,11 @@ where
     Element: ArrowField,
     Collection: FromIterator<Element>,
 {
+    /// Convert from a `arrow2::Array` to any collection that implements the `FromIterator` trait
     fn try_into_collection(self) -> arrow2::error::Result<Collection>;
+
+    /// Same as `try_into_collection` except can coerce the conversion to a specific Arrow type. This is
+    /// useful when the same rust type maps to one or more Arrow types for example `LargeString`.
     fn try_into_collection_as_type<ArrowType>(self) -> arrow2::error::Result<Collection>
     where
         ArrowType: ArrowDeserialize + ArrowField<Type = Element> + 'static,
@@ -286,6 +292,7 @@ where
         .map(<Field as ArrowDeserialize>::arrow_deserialize_internal)
 }
 
+/// Returns a typed iterator to a target type from an `arrow2::Array`
 pub fn arrow_array_deserialize_iterator_as_type<'a, Element, ArrowType>(
     arr: &'a dyn arrow2::array::Array,
 ) -> arrow2::error::Result<impl Iterator<Item = Element> + 'a>

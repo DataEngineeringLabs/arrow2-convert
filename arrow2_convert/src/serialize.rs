@@ -1,3 +1,5 @@
+//! Implementation and traits for serializing to Arrow.
+
 use arrow2::array::*;
 use arrow2::chunk::Chunk;
 use chrono::{NaiveDate, NaiveDateTime};
@@ -429,7 +431,11 @@ where
     Self: IntoIterator<Item = &'a Element>,
     Element: 'static,
 {
+    /// Convert from any iterable collection into an `arrow2::Array`
     fn try_into_arrow(self) -> arrow2::error::Result<ArrowArray>;
+
+    /// Convert from any iterable collection into an `arrow2::Array` by coercing the conversion to a specific Arrow type.
+    /// This is useful when the same rust type maps to one or more Arrow types for example `LargeString`.
     fn try_into_arrow_as_type<ArrowType>(self) -> arrow2::error::Result<ArrowArray>
     where
         ArrowType: ArrowSerialize + ArrowField<Type = Element> + 'static;
