@@ -1,12 +1,14 @@
 use arrow2::array::*;
 use arrow2::datatypes::*;
+use arrow2_convert::deserialize::arrow_array_deserialize_iterator_as_type;
 use arrow2_convert::deserialize::*;
-use arrow2_convert::field::LargeBinary;
+use arrow2_convert::field::{LargeBinary, I128};
 use arrow2_convert::serialize::*;
 use arrow2_convert::{
     field::{FixedSizeBinary, FixedSizeVec, LargeString, LargeVec},
     ArrowField,
 };
+use std::borrow::Borrow;
 use std::sync::Arc;
 
 #[test]
@@ -185,7 +187,6 @@ fn test_primitive_type_vec() {
     test_int_type!(i16);
     test_int_type!(i32);
     test_int_type!(i64);
-    test_int_type!(i128);
     test_int_type!(u8);
     test_int_type!(u16);
     test_int_type!(u32);
@@ -193,6 +194,31 @@ fn test_primitive_type_vec() {
     test_float_type!(f32);
     test_float_type!(f64);
 
+    // i128
+    // i128 is special since we need to require precision and scale so the TryIntoArrow trait
+    // is not implemented for Vec<i128>.
+    let original_array = vec![1_i128, 2, 3];
+    let b: Box<dyn Array> = arrow_serialize_to_mutable_array::<_, I128<32, 32>, _>(&original_array)
+        .unwrap()
+        .as_box();
+    let round_trip: Vec<i128> =
+        arrow_array_deserialize_iterator_as_type::<_, I128<32, 32>>(b.borrow())
+            .unwrap()
+            .collect();
+    assert_eq!(original_array, round_trip);
+
+    let original_array = vec![Some(1_i128), None, Some(3)];
+    let b: Box<dyn Array> =
+        arrow_serialize_to_mutable_array::<_, Option<I128<32, 32>>, _>(&original_array)
+            .unwrap()
+            .as_box();
+    let round_trip: Vec<Option<i128>> =
+        arrow_array_deserialize_iterator_as_type::<_, Option<I128<32, 32>>>(b.borrow())
+            .unwrap()
+            .collect();
+    assert_eq!(original_array, round_trip);
+
+    // bool
     let original_array = vec![false, true, false];
     let b: Box<dyn Array> = original_array.try_into_arrow().unwrap();
     let round_trip: Vec<bool> = b.try_into_collection().unwrap();

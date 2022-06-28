@@ -111,9 +111,19 @@ impl_arrow_deserialize_primitive!(i8);
 impl_arrow_deserialize_primitive!(i16);
 impl_arrow_deserialize_primitive!(i32);
 impl_arrow_deserialize_primitive!(i64);
-impl_arrow_deserialize_primitive!(i128);
 impl_arrow_deserialize_primitive!(f32);
 impl_arrow_deserialize_primitive!(f64);
+
+impl<const PRECISION: usize, const SCALE: usize> ArrowDeserialize for I128<PRECISION, SCALE> {
+    type ArrayType = PrimitiveArray<i128>;
+
+    #[inline]
+    fn arrow_deserialize<'a>(v: Option<&i128>) -> Option<i128> {
+        v.copied()
+    }
+}
+
+impl_arrow_array!(PrimitiveArray<i128>);
 
 impl ArrowDeserialize for String {
     type ArrayType = Utf8Array<i32>;

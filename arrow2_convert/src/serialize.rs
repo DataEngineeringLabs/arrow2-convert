@@ -104,10 +104,27 @@ impl_numeric_type!(u64);
 impl_numeric_type!(i8);
 impl_numeric_type!(i16);
 impl_numeric_type!(i32);
-impl_numeric_type!(i128);
 impl_numeric_type!(i64);
 impl_numeric_type!(f32);
 impl_numeric_type!(f64);
+
+impl<const PRECISION: usize, const SCALE: usize> ArrowSerialize for I128<PRECISION, SCALE> {
+    type MutableArrayType = MutablePrimitiveArray<i128>;
+
+    #[inline]
+    fn new_array() -> Self::MutableArrayType {
+        Self::MutableArrayType::default()
+    }
+
+    #[inline]
+    fn arrow_serialize(v: &i128, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+        array.try_push(Some(*v))
+    }
+}
+
+impl ArrowMutableArray for MutablePrimitiveArray<i128> {
+    impl_mutable_array_body!();
+}
 
 impl ArrowSerialize for String {
     type MutableArrayType = MutableUtf8Array<i32>;
@@ -392,8 +409,8 @@ fn arrow_serialize_extend_internal<
     Ok(())
 }
 
-// internal helper method to serialize to a mutable array
-fn arrow_serialize_internal<
+/// Serializes an iterator into an `arrow2::MutableArray`
+pub fn arrow_serialize_to_mutable_array<
     'a,
     A: 'static,
     T: ArrowSerialize + ArrowField<Type = A> + 'static,
@@ -424,14 +441,14 @@ where
     Collection: IntoIterator<Item = &'a Element>,
 {
     fn try_into_arrow(self) -> arrow2::error::Result<Arc<dyn Array>> {
-        Ok(arrow_serialize_internal::<Element, Element, Collection>(self)?.as_arc())
+        Ok(arrow_serialize_to_mutable_array::<Element, Element, Collection>(self)?.as_arc())
     }
 
     fn try_into_arrow_as_type<Field>(self) -> arrow2::error::Result<Arc<dyn Array>>
     where
         Field: ArrowSerialize + ArrowField<Type = Element> + 'static,
     {
-        Ok(arrow_serialize_internal::<Element, Field, Collection>(self)?.as_arc())
+        Ok(arrow_serialize_to_mutable_array::<Element, Field, Collection>(self)?.as_arc())
     }
 }
 
@@ -441,14 +458,14 @@ where
     Collection: IntoIterator<Item = &'a Element>,
 {
     fn try_into_arrow(self) -> arrow2::error::Result<Box<dyn Array>> {
-        Ok(arrow_serialize_internal::<Element, Element, Collection>(self)?.as_box())
+        Ok(arrow_serialize_to_mutable_array::<Element, Element, Collection>(self)?.as_box())
     }
 
     fn try_into_arrow_as_type<E>(self) -> arrow2::error::Result<Box<dyn Array>>
     where
         E: ArrowSerialize + ArrowField<Type = Element> + 'static,
     {
-        Ok(arrow_serialize_internal::<Element, E, Collection>(self)?.as_box())
+        Ok(arrow_serialize_to_mutable_array::<Element, E, Collection>(self)?.as_box())
     }
 }
 
@@ -458,7 +475,7 @@ where
     Collection: IntoIterator<Item = &'a Element>,
 {
     fn try_into_arrow(self) -> arrow2::error::Result<Chunk<Arc<dyn Array>>> {
-        Ok(Chunk::new(vec![arrow_serialize_internal::<
+        Ok(Chunk::new(vec![arrow_serialize_to_mutable_array::<
             Element,
             Element,
             Collection,
@@ -470,7 +487,7 @@ where
     where
         Field: ArrowSerialize + ArrowField<Type = Element> + 'static,
     {
-        Ok(Chunk::new(vec![arrow_serialize_internal::<
+        Ok(Chunk::new(vec![arrow_serialize_to_mutable_array::<
             Element,
             Field,
             Collection,
@@ -485,7 +502,7 @@ where
     Collection: IntoIterator<Item = &'a Element>,
 {
     fn try_into_arrow(self) -> arrow2::error::Result<Chunk<Box<dyn Array>>> {
-        Ok(Chunk::new(vec![arrow_serialize_internal::<
+        Ok(Chunk::new(vec![arrow_serialize_to_mutable_array::<
             Element,
             Element,
             Collection,
@@ -497,7 +514,7 @@ where
     where
         E: ArrowSerialize + ArrowField<Type = Element> + 'static,
     {
-        Ok(Chunk::new(vec![arrow_serialize_internal::<
+        Ok(Chunk::new(vec![arrow_serialize_to_mutable_array::<
             Element,
             E,
             Collection,
