@@ -3,7 +3,7 @@ use arrow2_convert::field::LargeBinary;
 
 #[derive(Debug, ArrowField)]
 struct Test {
-    #[arrow_field(override="LargeBinary")]
+    #[arrow_field(type="LargeBinary")]
     s: String
 }
 

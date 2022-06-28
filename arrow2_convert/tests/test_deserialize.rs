@@ -1,7 +1,6 @@
 use arrow2::array::*;
 use arrow2::error::Result;
 use arrow2_convert::deserialize::*;
-use arrow2_convert::field::LargeString;
 use arrow2_convert::serialize::*;
 use arrow2_convert::ArrowField;
 
@@ -63,7 +62,7 @@ fn test_deserialize_large_types_schema_mismatch_error() {
     }
     #[derive(Debug, Clone, PartialEq, ArrowField)]
     struct S2 {
-        #[arrow_field(override = "LargeString")]
+        #[arrow_field(type = "arrow2_convert::field::LargeString")]
         a: String,
     }
 

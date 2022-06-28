@@ -1,7 +1,4 @@
 use arrow2::datatypes::*;
-use arrow2_convert::field::{
-    FixedSizeBinary, FixedSizeVec, LargeBinary, LargeString, LargeVec, I128,
-};
 use arrow2_convert::ArrowField;
 
 #[test]
@@ -21,7 +18,7 @@ fn test_schema_types() {
         // timestamp(ns, None)
         a6: Option<chrono::NaiveDateTime>,
         // i128(precision, scale)
-        #[arrow_field(override = "I128<32, 32>")]
+        #[arrow_field(type = "arrow2_convert::field::I128<32, 32>")]
         a7: i128,
         // array of date times
         date_time_list: Vec<chrono::NaiveDateTime>,
@@ -40,19 +37,19 @@ fn test_schema_types() {
         // int 32 array
         int32_array: Vec<i32>,
         // large binary
-        #[arrow_field(override = "LargeBinary")]
+        #[arrow_field(type = "arrow2_convert::field::LargeBinary")]
         large_binary: Vec<u8>,
         // fixed size binary
-        #[arrow_field(override = "FixedSizeBinary<3>")]
+        #[arrow_field(type = "arrow2_convert::field::FixedSizeBinary<3>")]
         fixed_size_binary: Vec<u8>,
         // large string
-        #[arrow_field(override = "LargeString")]
+        #[arrow_field(type = "arrow2_convert::field::LargeString")]
         large_string: String,
         // large vec
-        #[arrow_field(override = "LargeVec<i64>")]
+        #[arrow_field(type = "arrow2_convert::field::LargeVec<i64>")]
         large_vec: Vec<i64>,
         // fixed size vec
-        #[arrow_field(override = "FixedSizeVec<i64, 3>")]
+        #[arrow_field(type = "arrow2_convert::field::FixedSizeVec<i64, 3>")]
         fixed_size_vec: Vec<i64>,
     }
 
