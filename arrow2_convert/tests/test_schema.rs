@@ -1,5 +1,7 @@
 use arrow2::datatypes::*;
-use arrow2_convert::field::{FixedSizeBinary, FixedSizeVec, LargeBinary, LargeString, LargeVec};
+use arrow2_convert::field::{
+    FixedSizeBinary, FixedSizeVec, LargeBinary, LargeString, LargeVec, I128,
+};
 use arrow2_convert::ArrowField;
 
 #[test]
@@ -18,7 +20,8 @@ fn test_schema_types() {
         a5: chrono::NaiveDateTime,
         // timestamp(ns, None)
         a6: Option<chrono::NaiveDateTime>,
-        // i128
+        // i128(precision, scale)
+        #[arrow_field(override = "I128<32, 32>")]
         a7: i128,
         // array of date times
         date_time_list: Vec<chrono::NaiveDateTime>,

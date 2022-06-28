@@ -107,12 +107,14 @@ impl_numeric_type_full!(i64, Int64);
 impl_numeric_type_full!(f32, Float32);
 impl_numeric_type_full!(f64, Float64);
 
-impl ArrowField for i128 {
+pub struct I128<const PRECISION: usize, const SCALE: usize> {}
+
+impl<const PRECISION: usize, const SCALE: usize> ArrowField for I128<PRECISION, SCALE> {
     type Type = i128;
 
     #[inline]
     fn data_type() -> arrow2::datatypes::DataType {
-        arrow2::datatypes::DataType::Decimal(32, 32)
+        arrow2::datatypes::DataType::Decimal(PRECISION, SCALE)
     }
 }
 
@@ -247,6 +249,7 @@ arrow_enable_vec_for_type!(NaiveDate);
 arrow_enable_vec_for_type!(Vec<u8>);
 arrow_enable_vec_for_type!(LargeBinary);
 impl<const SIZE: usize> ArrowEnableVecForType for FixedSizeBinary<SIZE> {}
+impl<const PRECISION: usize, const SCALE: usize> ArrowEnableVecForType for I128<PRECISION, SCALE> {}
 
 // Blanket implementation for Vec<Option<T>> if vectors are enabled for T
 impl<T> ArrowEnableVecForType for Option<T> where T: ArrowField + ArrowEnableVecForType {}

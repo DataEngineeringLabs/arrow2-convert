@@ -8,7 +8,6 @@ The Arrow ecosystem provides many ways to convert between Arrow and other popula
 
 Types that implement the `ArrowField`, `ArrowSerialize` and `ArrowDeserialize` traits can be converted to/from Arrow. The `ArrowField` implementation for a type defines the Arrow schema. The `ArrowSerialize` and `ArrowDeserialize` implementations provide the conversion logic via arrow2's data structures.
 
-
 For serializing to arrow, `TryIntoArrow::try_into_arrow` can be used to serialize any iterable into an `arrow2::Array` or a `arrow2::Chunk`.  `arrow2::Array` represents the in-memory Arrow layout. `arrow2::Chunk` represents a column group and can be used with `arrow2` API for other functionality such converting to parquet and arrow flight RPC.
 
 For deserializing from arrow, the `TryIntoCollection::try_into_collection` can be used to deserialize from an `arrow2::Array` representation into any container that implements `FromIterator`.
@@ -18,7 +17,8 @@ For deserializing from arrow, the `TryIntoCollection::try_into_collection` can b
 - A derive macro, `ArrowField`, can generate implementations of the above traits for structures. Support for enums is in progress. 
 - Implementations are provided for Arrow primitives
     - Numeric types
-        - [`u8`], [`u16`], [`u32`], [`u64`], [`i8`], [`i16`], [`i32`], [`i64`], [`i128`], [`f32`], [`f64`]
+        - [`u8`], [`u16`], [`u32`], [`u64`], [`i8`], [`i16`], [`i32`], [`i64`], [`f32`], [`f64`]
+        - [`i128`] is supported via the `override` attribute. Please see the [i128 section](#i128) for more details.
     - Other types: 
         - [`bool`], [`String`], [`Binary`]
     - Temporal types: 
@@ -34,7 +34,43 @@ For deserializing from arrow, the `TryIntoCollection::try_into_collection` can b
 
 This is not an exhaustive list. Please open an issue if you need a feature.
 
-### A note on nested option types
+### i128
+
+i128 represents a decimal number and requires the precision and scale to be specified to be used as an Arrow data type. The precision and scale can be specified by using a type override via the `I128` type. 
+
+For example to use `i128` as a field in a struct:
+
+```rust
+use arrow2_convert::field::I128;
+use arrow2_convert::ArrowField;
+
+#[derive(Debug, ArrowField)]
+struct S {
+    #[arrow_field(override = "I128<32, 32>")]
+    field: i128,
+}
+```
+
+A `vec<i128>` can be converted. to/from arrow by using the `arrow_serialize_to_mutable_array` and `arrow_array_deserialize_iterator_as_type` methods. 
+
+```rust
+use arrow2::array::{Array, MutableArray};
+use arrow2_convert::serialize::arrow_serialize_to_mutable_array;
+use arrow2_convert::deserialize::arrow_array_deserialize_iterator_as_type;
+use arrow2_convert::field::I128;
+use std::borrow::Borrow;
+
+fn convert_i128() {
+    let original_array = vec![1 as i128, 2, 3];
+    let b: Box<dyn Array> = arrow_serialize_to_mutable_array::<_, I128<32,32>, _>(
+        &original_array).unwrap().as_box();
+    let round_trip: Vec<i128> = arrow_array_deserialize_iterator_as_type::<_, I128<32,32>>(
+        b.borrow()).unwrap().collect();
+    assert_eq!(original_array, round_trip);
+}
+
+```
+### Nested Option Types
 
 Since the Arrow format only supports one level of validity, nested option types such as `Option<Option<T>>` after serialization to Arrow will lose intermediate nesting of None values. For example, `Some(None)` will be serialized to `None`, 
 
