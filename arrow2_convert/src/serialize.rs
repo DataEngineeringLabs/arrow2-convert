@@ -3,7 +3,6 @@
 use arrow2::array::*;
 use arrow2::array::Array;
 use arrow2::chunk::Chunk;
-//use arrow2::chunk::Chunk;
 use chrono::{NaiveDate, NaiveDateTime};
 use std::sync::Arc;
 
