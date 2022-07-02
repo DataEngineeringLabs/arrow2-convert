@@ -324,7 +324,7 @@ where
     arrow_array_deserialize_iterator_as_type::<T, T>(arr)
 }
 
-impl<'a, Collection, Element, ArrowArray> TryIntoCollection<Collection, Element> for ArrowArray
+impl<Collection, Element, ArrowArray> TryIntoCollection<Collection, Element> for ArrowArray
 where
     Element: ArrowDeserialize + ArrowField<Type = Element> + 'static,
     for<'b> &'b <Element as ArrowDeserialize>::ArrayType: IntoIterator,
