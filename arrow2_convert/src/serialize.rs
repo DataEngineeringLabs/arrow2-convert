@@ -1,5 +1,6 @@
 //! Implementation and traits for serializing to Arrow.
 
+use arrow2::array::Array;
 use arrow2::array::*;
 use arrow2::chunk::Chunk;
 use chrono::{NaiveDate, NaiveDateTime};
@@ -423,6 +424,47 @@ pub fn arrow_serialize_to_mutable_array<
     let mut arr = <T as ArrowSerialize>::new_array();
     arrow_serialize_extend_internal::<A, T, I>(into_iter, &mut arr)?;
     Ok(arr)
+}
+
+/// API to flatten a Chunk consisting of an `arrow2::array::StructArray` into a `Chunk` consisting of `arrow2::array::Array`s contained by the `StructArray`
+pub trait FlattenChunk {
+    /// Convert an `arrow2::chunk::Chunk` containing a `arrow2::array::StructArray` to an `arrow2::chunk::Chunk` consisting of the
+    /// `arrow::array::Array`s contained by the `StructArray` by consuming the
+    /// original `Chunk`. Returns an error if the `Chunk` cannot be flattened.
+    fn flatten(self) -> Result<Chunk<Arc<dyn Array>>, arrow2::error::Error>;
+}
+
+impl<A> FlattenChunk for Chunk<A>
+where
+    A: AsRef<dyn Array>,
+{
+    fn flatten(self) -> Result<Chunk<Arc<dyn Array>>, arrow2::error::Error> {
+        let arrays = self.into_arrays();
+
+        // we only support flattening of a Chunk containing a single StructArray
+        if arrays.len() != 1 {
+            return Err(arrow2::error::Error::InvalidArgumentError(
+                "Chunk must contain a single Array".to_string(),
+            ));
+        }
+
+        let array = &arrays[0];
+
+        let physical_type = array.as_ref().data_type().to_physical_type();
+        if physical_type != arrow2::datatypes::PhysicalType::Struct {
+            return Err(arrow2::error::Error::InvalidArgumentError(
+                "Array in Chunk must be of type arrow2::datatypes::PhysicalType::Struct"
+                    .to_string(),
+            ));
+        }
+
+        let struct_array = array
+            .as_ref()
+            .as_any()
+            .downcast_ref::<StructArray>()
+            .unwrap();
+        Ok(Chunk::new(struct_array.values().to_vec()))
+    }
 }
 
 /// Top-level API to serialize to Arrow
