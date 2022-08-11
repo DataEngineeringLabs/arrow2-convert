@@ -2,7 +2,7 @@
 use arrow2::array::Array;
 use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow, ArrowField};
 
-#[derive(Debug, Clone, PartialEq, ArrowField)]
+#[derive(Debug, Clone, PartialEq, Eq, ArrowField)]
 pub struct Foo {
     name: String,
 }
