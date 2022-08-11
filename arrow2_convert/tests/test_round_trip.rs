@@ -234,3 +234,22 @@ fn test_primitive_type_vec() {
     let round_trip: Vec<Option<Vec<u8>>> = b.try_into_collection().unwrap();
     assert_eq!(original_array, round_trip);
 }
+
+#[test]
+fn test_escaped_name() {
+    #[derive(ArrowField, Debug, Eq, PartialEq)]
+    struct EscapedName {
+        r#type: bool,
+    }
+    let array = [EscapedName { r#type: true }, EscapedName { r#type: false }];
+    let b: Box<dyn Array> = array.try_into_arrow().unwrap();
+    let ty = b.data_type();
+    match ty {
+        DataType::Struct(s) => {
+            assert_eq!(s[0].name, "type");
+        }
+        _ => unreachable!(),
+    }
+    let round_trip: Vec<EscapedName> = b.try_into_collection().unwrap();
+    assert_eq!(array.as_slice(), round_trip.as_slice());
+}
