@@ -55,7 +55,7 @@ pub struct Root {
     fixed_size_vec: Vec<i64>,
 }
 
-#[derive(Debug, Clone, PartialEq, ArrowField)]
+#[derive(Debug, Clone, PartialEq, Eq, ArrowField)]
 pub struct Child {
     a1: i64,
     a2: String,
@@ -63,14 +63,14 @@ pub struct Child {
     child_array: Vec<ChildChild>,
 }
 
-#[derive(Debug, Clone, PartialEq, ArrowField)]
+#[derive(Debug, Clone, PartialEq, Eq, ArrowField)]
 pub struct ChildChild {
     a1: i32,
     bool_array: Vec<bool>,
     int64_array: Vec<i64>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 /// A newtype around a u64
 pub struct CustomType(u64);
 

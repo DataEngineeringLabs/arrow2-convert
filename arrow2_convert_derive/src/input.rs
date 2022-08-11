@@ -12,7 +12,7 @@ pub const FIELD_ONLY: &str = "field_only";
 pub const SERIALIZE_ONLY: &str = "serialize_only";
 pub const DESERIALIZE_ONLY: &str = "deserialize_only";
 
-#[derive(PartialEq, Clone)]
+#[derive(Clone)]
 pub enum TraitsToDerive {
     FieldOnly,
     SerializeOnly,
