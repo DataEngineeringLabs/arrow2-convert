@@ -386,12 +386,5 @@ pub fn expand(input: DeriveStruct) -> TokenStream {
 
 /// Removes the 'r#' from escaped identifiers.
 fn strip_escape_prefix(name: &str) -> &str {
-    if name.starts_with("r#") {
-        if name.len() == 2 {
-            return "";
-        }
-        &name[2..]
-    } else {
-        name
-    }
+    name.strip_prefix("r#").unwrap_or(name)
 }
