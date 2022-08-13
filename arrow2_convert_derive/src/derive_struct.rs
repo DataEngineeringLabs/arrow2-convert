@@ -28,7 +28,12 @@ pub fn expand(input: DeriveStruct) -> TokenStream {
 
     let field_names_str = field_names
         .iter()
-        .map(|field| syn::LitStr::new(&format!("{}", field), proc_macro2::Span::call_site()))
+        .map(|field| {
+            syn::LitStr::new(
+                strip_escape_prefix(&format!("{}", field)),
+                proc_macro2::Span::call_site(),
+            )
+        })
         .collect::<Vec<_>>();
 
     let field_indices = field_names
@@ -377,4 +382,9 @@ pub fn expand(input: DeriveStruct) -> TokenStream {
     }
 
     generated
+}
+
+/// Removes the 'r#' from escaped identifiers.
+fn strip_escape_prefix(name: &str) -> &str {
+    name.strip_prefix("r#").unwrap_or(name)
 }
