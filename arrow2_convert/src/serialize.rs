@@ -431,14 +431,14 @@ pub trait FlattenChunk {
     /// Convert an `arrow2::chunk::Chunk` containing a `arrow2::array::StructArray` to an `arrow2::chunk::Chunk` consisting of the
     /// `arrow::array::Array`s contained by the `StructArray` by consuming the
     /// original `Chunk`. Returns an error if the `Chunk` cannot be flattened.
-    fn flatten(self) -> Result<Chunk<Arc<dyn Array>>, arrow2::error::Error>;
+    fn flatten(self) -> Result<Chunk<Box<dyn Array>>, arrow2::error::Error>;
 }
 
 impl<A> FlattenChunk for Chunk<A>
 where
     A: AsRef<dyn Array>,
 {
-    fn flatten(self) -> Result<Chunk<Arc<dyn Array>>, arrow2::error::Error> {
+    fn flatten(self) -> Result<Chunk<Box<dyn Array>>, arrow2::error::Error> {
         let arrays = self.into_arrays();
 
         // we only support flattening of a Chunk containing a single StructArray

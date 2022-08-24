@@ -186,7 +186,7 @@ pub fn expand(input: DeriveStruct) -> TokenStream {
 
                 fn as_box(&mut self) -> Box<dyn arrow2::array::Array> {
                     let values = vec![#(
-                        <#mutable_field_array_types as arrow2::array::MutableArray>::as_arc(&mut self.#field_names),
+                        <#mutable_field_array_types as arrow2::array::MutableArray>::as_box(&mut self.#field_names),
                     )*];
 
                     Box::new(arrow2::array::StructArray::from_data(
@@ -198,7 +198,7 @@ pub fn expand(input: DeriveStruct) -> TokenStream {
 
                 fn as_arc(&mut self) -> std::sync::Arc<dyn arrow2::array::Array> {
                     let values = vec![#(
-                        <#mutable_field_array_types as arrow2::array::MutableArray>::as_arc(&mut self.#field_names),
+                        <#mutable_field_array_types as arrow2::array::MutableArray>::as_box(&mut self.#field_names),
                     )*];
 
                     std::sync::Arc::new(arrow2::array::StructArray::from_data(
