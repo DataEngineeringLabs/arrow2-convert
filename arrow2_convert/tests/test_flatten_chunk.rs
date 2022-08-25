@@ -13,16 +13,16 @@ fn test_flatten_chunk() {
     }
 
     let target = Chunk::new(vec![
-        Int64Array::from(&[Some(1), Some(2)]).arced(),
-        Int64Array::from(&[Some(1), Some(2)]).arced(),
+        Int64Array::from(&[Some(1), Some(2)]).boxed(),
+        Int64Array::from(&[Some(1), Some(2)]).boxed(),
     ]);
 
     let array = vec![Struct { a: 1, b: 1 }, Struct { a: 2, b: 2 }];
 
-    let array: Arc<dyn Array> = array.try_into_arrow().unwrap();
-    let chunk = Chunk::new(vec![array]);
+    let array: Box<dyn Array> = array.try_into_arrow().unwrap();
+    let chunk: Chunk<Box<dyn Array>> = Chunk::new(vec![array]);
 
-    let flattened = chunk.flatten().unwrap();
+    let flattened: Chunk<Box<dyn Array>> = chunk.flatten().unwrap();
 
     assert_eq!(flattened, target);
 }

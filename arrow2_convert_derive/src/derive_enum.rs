@@ -284,7 +284,7 @@ pub fn expand(input: DeriveEnum) -> TokenStream {
 
                 fn as_box(&mut self) -> Box<dyn arrow2::array::Array> {
                     let values = vec![#(
-                        <#mutable_variant_array_types as arrow2::array::MutableArray>::as_arc(&mut self.#variant_names),
+                        <#mutable_variant_array_types as arrow2::array::MutableArray>::as_box(&mut self.#variant_names),
                     )*];
 
                     Box::new(arrow2::array::UnionArray::from_data(
@@ -297,7 +297,7 @@ pub fn expand(input: DeriveEnum) -> TokenStream {
 
                 fn as_arc(&mut self) -> std::sync::Arc<dyn arrow2::array::Array> {
                     let values = vec![#(
-                        <#mutable_variant_array_types as arrow2::array::MutableArray>::as_arc(&mut self.#variant_names),
+                        <#mutable_variant_array_types as arrow2::array::MutableArray>::as_box(&mut self.#variant_names),
                     )*];
 
                     std::sync::Arc::new(arrow2::array::UnionArray::from_data(
