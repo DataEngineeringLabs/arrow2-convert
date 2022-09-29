@@ -113,17 +113,6 @@ pub fn expand(input: DeriveStruct) -> TokenStream {
             }
         };
 
-        let array_arrow_mutable_array_impl = quote! {
-            impl arrow2_convert::serialize::ArrowMutableArray for #mutable_array_name {
-                fn reserve(&mut self, additional: usize, _additional_values: usize) {
-                    if let Some(x) = self.validity.as_mut() {
-                        x.reserve(additional)
-                    }
-                    #(<<#field_types as arrow2_convert::serialize::ArrowSerialize>::MutableArrayType as arrow2_convert::serialize::ArrowMutableArray>::reserve(&mut self.#field_names, additional, _additional_values);)*
-                }
-            }
-        };
-
         let array_try_push_impl = quote! {
             impl<__T: std::borrow::Borrow<#original_name>> arrow2::array::TryPush<Option<__T>> for #mutable_array_name {
                 fn try_push(&mut self, item: Option<__T>) -> arrow2::error::Result<()> {
@@ -229,6 +218,13 @@ pub fn expand(input: DeriveStruct) -> TokenStream {
                         validity.shrink_to_fit();
                     }
                 }
+
+                fn reserve(&mut self, additional: usize) {
+                    if let Some(x) = self.validity.as_mut() {
+                        x.reserve(additional)
+                    }
+                    #(<<#field_types as arrow2_convert::serialize::ArrowSerialize>::MutableArrayType as arrow2::array::MutableArray>::reserve(&mut self.#field_names, additional);)*
+                }
             }
         };
 
@@ -253,7 +249,6 @@ pub fn expand(input: DeriveStruct) -> TokenStream {
             array_decl,
             array_impl,
             array_default_impl,
-            array_arrow_mutable_array_impl,
             array_try_push_impl,
             array_try_extend_impl,
             array_mutable_array_impl,

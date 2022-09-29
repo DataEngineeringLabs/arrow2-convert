@@ -216,16 +216,6 @@ pub fn expand(input: DeriveEnum) -> TokenStream {
             }
         };
 
-        let array_arrow_mutable_array_impl = quote! {
-            impl arrow2_convert::serialize::ArrowMutableArray for #mutable_array_name {
-                fn reserve(&mut self, additional: usize, _additional_values: usize) {
-                    #(<<#variant_types as arrow2_convert::serialize::ArrowSerialize>::MutableArrayType as arrow2_convert::serialize::ArrowMutableArray>::reserve(&mut self.#variant_names, additional, _additional_values);)*
-                    self.types.reserve(additional);
-                    #offsets_reserve
-                }
-            }
-        };
-
         let array_try_push_impl = quote! {
             impl<__T: std::borrow::Borrow<#original_name>> arrow2::array::TryPush<Option<__T>> for #mutable_array_name {
                 fn try_push(&mut self, item: Option<__T>) -> arrow2::error::Result<()> {
@@ -328,6 +318,12 @@ pub fn expand(input: DeriveEnum) -> TokenStream {
                     self.types.shrink_to_fit();
                     #offsets_shrink_to_fit
                 }
+
+                fn reserve(&mut self, additional: usize) {
+                    #(<<#variant_types as arrow2_convert::serialize::ArrowSerialize>::MutableArrayType as arrow2::array::MutableArray>::reserve(&mut self.#variant_names, additional);)*
+                    self.types.reserve(additional);
+                    #offsets_reserve
+                }
             }
         };
 
@@ -351,7 +347,6 @@ pub fn expand(input: DeriveEnum) -> TokenStream {
         generated.extend([
             array_decl,
             array_impl,
-            array_arrow_mutable_array_impl,
             array_try_push_impl,
             array_default_impl,
             array_try_extend_impl,
