@@ -16,7 +16,7 @@ use crate::field::*;
 /// Note that Vec<T> implementation needs to be enabled by the [`crate::arrow_enable_vec_for_type`] macro.
 pub trait ArrowSerialize: ArrowField {
     /// The [`arrow2::array::MutableArray`] that holds this value
-    type MutableArrayType: ArrowMutableArray;
+    type MutableArrayType: arrow2::array::MutableArray;
 
     /// Create a new mutable array
     fn new_array() -> Self::MutableArrayType;
@@ -26,15 +26,6 @@ pub trait ArrowSerialize: ArrowField {
         v: &<Self as ArrowField>::Type,
         array: &mut Self::MutableArrayType,
     ) -> arrow2::error::Result<()>;
-}
-
-/// This trait provides an interface that's exposed by all Mutable lists but that are not
-/// part of the official MutableArray API.
-///
-/// Implementations of this trait are provided for all mutable arrays provided by [`arrow2`].
-#[doc(hidden)]
-pub trait ArrowMutableArray: arrow2::array::MutableArray {
-    fn reserve(&mut self, additional: usize, additional_values: usize);
 }
 
 // Macro to facilitate implementation of serializable traits for numeric types and numeric mutable arrays.
@@ -55,20 +46,6 @@ macro_rules! impl_numeric_type {
             ) -> arrow2::error::Result<()> {
                 array.try_push(Some(*v))
             }
-        }
-
-        impl ArrowMutableArray for MutablePrimitiveArray<$physical_type> {
-            impl_mutable_array_body!();
-        }
-    };
-}
-
-// Macro to facilitate implementing ArrowMutableArray
-macro_rules! impl_mutable_array_body {
-    () => {
-        #[inline]
-        fn reserve(&mut self, additional: usize, _additional_values: usize) {
-            self.reserve(additional);
         }
     };
 }
@@ -123,10 +100,6 @@ impl<const PRECISION: usize, const SCALE: usize> ArrowSerialize for I128<PRECISI
     fn arrow_serialize(v: &i128, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
         array.try_push(Some(*v))
     }
-}
-
-impl ArrowMutableArray for MutablePrimitiveArray<i128> {
-    impl_mutable_array_body!();
 }
 
 impl ArrowSerialize for String {
@@ -339,61 +312,6 @@ where
     }
 }
 
-impl ArrowMutableArray for MutableBooleanArray {
-    impl_mutable_array_body!();
-}
-
-impl ArrowMutableArray for MutableUtf8Array<i32> {
-    #[inline]
-    fn reserve(&mut self, additional: usize, additional_values: usize) {
-        self.reserve(additional, additional_values);
-    }
-}
-
-impl ArrowMutableArray for MutableUtf8Array<i64> {
-    #[inline]
-    fn reserve(&mut self, additional: usize, additional_values: usize) {
-        self.reserve(additional, additional_values);
-    }
-}
-
-impl ArrowMutableArray for MutableBinaryArray<i32> {
-    impl_mutable_array_body!();
-}
-
-impl ArrowMutableArray for MutableBinaryArray<i64> {
-    impl_mutable_array_body!();
-}
-
-impl ArrowMutableArray for MutableFixedSizeBinaryArray {
-    #[inline]
-    fn reserve(&mut self, _additional: usize, _additional_values: usize) {}
-}
-
-impl<M> ArrowMutableArray for MutableListArray<i32, M>
-where
-    M: ArrowMutableArray + Default + 'static,
-{
-    #[inline]
-    fn reserve(&mut self, _additional: usize, _additional_values: usize) {}
-}
-
-impl<M> ArrowMutableArray for MutableListArray<i64, M>
-where
-    M: ArrowMutableArray + Default + 'static,
-{
-    #[inline]
-    fn reserve(&mut self, _additional: usize, _additional_values: usize) {}
-}
-
-impl<M> ArrowMutableArray for MutableFixedSizeListArray<M>
-where
-    M: ArrowMutableArray + Default + 'static,
-{
-    #[inline]
-    fn reserve(&mut self, _additional: usize, _additional_values: usize) {}
-}
-
 // internal helper method to extend a mutable array
 fn arrow_serialize_extend_internal<
     'a,
@@ -405,7 +323,7 @@ fn arrow_serialize_extend_internal<
     array: &mut <T as ArrowSerialize>::MutableArrayType,
 ) -> arrow2::error::Result<()> {
     let iter = into_iter.into_iter();
-    array.reserve(iter.size_hint().0, 0);
+    array.reserve(iter.size_hint().0);
     for i in iter {
         <T as ArrowSerialize>::arrow_serialize(i, array)?;
     }
