@@ -21,8 +21,7 @@ pub struct Foo {
     name: String,
 }
 
-#[test]
-fn test_simple_roundtrip() {
+fn main() {
     // an item
     let original_array = [
         Foo { name: "hello".to_string() },
