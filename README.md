@@ -8,7 +8,7 @@ The Arrow ecosystem provides many ways to convert between Arrow and other popula
 
 The example below performs a round trip conversion of a struct with a single field. 
 
-Please see the [complex_example.rs](./arrow2_convert/tests/complex_example.rs) for usage of the full functionality.
+Please see the [complex_example.rs](./tests/complex_example.rs) for usage of the full functionality.
 
 ```rust
 /// Simple example
