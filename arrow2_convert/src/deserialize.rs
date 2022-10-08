@@ -5,18 +5,38 @@ use chrono::{NaiveDate, NaiveDateTime};
 
 use crate::field::*;
 
-/// Implemented by [`ArrowField`] that can be deserialized from arrow
-pub trait ArrowDeserialize: ArrowField + Sized
+#[doc(hidden)]
+/// Type whose reference can be used to create an iterator.
+pub trait IterRef {
+    /// Iterator type.
+    type Iter<'a>: Iterator
+    where
+        Self: 'a;
+
+    /// Converts `&self` into an iterator.
+    fn iter_ref(&self) -> Self::Iter<'_>;
+}
+
+impl<T> IterRef for T
 where
-    Self::ArrayType: ArrowArray,
-    for<'a> &'a Self::ArrayType: IntoIterator,
+    for<'a> &'a T: IntoIterator,
 {
+    type Iter<'a> = <&'a T as IntoIterator>::IntoIter where Self: 'a;
+
+    #[inline]
+    fn iter_ref(&self) -> Self::Iter<'_> {
+        self.into_iter()
+    }
+}
+
+/// Implemented by [`ArrowField`] that can be deserialized from arrow
+pub trait ArrowDeserialize: ArrowField + Sized {
     /// The `arrow2::Array` type corresponding to this field
-    type ArrayType;
+    type ArrayType: ArrowArray;
 
     /// Deserialize this field from arrow
     fn arrow_deserialize(
-        v: <&Self::ArrayType as IntoIterator>::Item,
+        v: <<Self::ArrayType as IterRef>::Iter<'_> as Iterator>::Item,
     ) -> Option<<Self as ArrowField>::Type>;
 
     #[inline]
@@ -28,7 +48,7 @@ where
     /// something like for<'a> &'a T::ArrayType: IntoIterator<Item=Option<E>>,
     /// However, the E parameter seems to confuse the borrow checker if it's a reference.
     fn arrow_deserialize_internal(
-        v: <&Self::ArrayType as IntoIterator>::Item,
+        v: <<Self::ArrayType as IterRef>::Iter<'_> as Iterator>::Item,
     ) -> <Self as ArrowField>::Type {
         Self::arrow_deserialize(v).unwrap()
     }
@@ -36,18 +56,15 @@ where
 
 /// Internal trait used to support deserialization and iteration of structs, and nested struct lists
 ///
-/// Trivial pass-thru implementations are provided for arrow2 arrays that implement IntoIterator.
+/// Trivial pass-thru implementations are provided for arrow2 arrays that auto-implement IterRef.
 ///
 /// The derive macro generates implementations for typed struct arrays.
 #[doc(hidden)]
-pub trait ArrowArray
-where
-    for<'a> &'a Self: IntoIterator,
-{
+pub trait ArrowArray: IterRef {
     type BaseArrayType: Array;
 
     // Returns a typed iterator to the underlying elements of the array from an untyped Array reference.
-    fn iter_from_array_ref(b: &dyn Array) -> <&Self as IntoIterator>::IntoIter;
+    fn iter_from_array_ref(b: &dyn Array) -> <Self as IterRef>::Iter<'_>;
 }
 
 // Macro to facilitate implementation for numeric types and numeric arrays.
@@ -71,11 +88,11 @@ macro_rules! impl_arrow_array {
         impl ArrowArray for $array {
             type BaseArrayType = Self;
 
-            fn iter_from_array_ref(b: &dyn Array) -> <&Self as IntoIterator>::IntoIter {
+            fn iter_from_array_ref(b: &dyn Array) -> <Self as IterRef>::Iter<'_> {
                 b.as_any()
                     .downcast_ref::<Self::BaseArrayType>()
                     .unwrap()
-                    .into_iter()
+                    .iter_ref()
             }
         }
     };
@@ -85,21 +102,19 @@ macro_rules! impl_arrow_array {
 impl<T> ArrowDeserialize for Option<T>
 where
     T: ArrowDeserialize,
-    T::ArrayType: 'static + ArrowArray,
-    for<'a> &'a T::ArrayType: IntoIterator,
 {
     type ArrayType = <T as ArrowDeserialize>::ArrayType;
 
     #[inline]
     fn arrow_deserialize(
-        v: <&Self::ArrayType as IntoIterator>::Item,
+        v: <<Self::ArrayType as IterRef>::Iter<'_> as Iterator>::Item,
     ) -> Option<<Self as ArrowField>::Type> {
         Self::arrow_deserialize_internal(v).map(Some)
     }
 
     #[inline]
     fn arrow_deserialize_internal(
-        v: <&Self::ArrayType as IntoIterator>::Item,
+        v: <<Self::ArrayType as IterRef>::Iter<'_> as Iterator>::Item,
     ) -> <Self as ArrowField>::Type {
         <T as ArrowDeserialize>::arrow_deserialize(v)
     }
@@ -204,7 +219,6 @@ fn arrow_deserialize_vec_helper<T>(
 ) -> Option<<Vec<T> as ArrowField>::Type>
 where
     T: ArrowDeserialize + ArrowEnableVecForType + 'static,
-    for<'a> &'a T::ArrayType: IntoIterator,
 {
     use std::ops::Deref;
     v.map(|t| {
@@ -217,8 +231,6 @@ where
 impl<T> ArrowDeserialize for Vec<T>
 where
     T: ArrowDeserialize + ArrowEnableVecForType + 'static,
-    <T as ArrowDeserialize>::ArrayType: 'static,
-    for<'b> &'b <T as ArrowDeserialize>::ArrayType: IntoIterator,
 {
     type ArrayType = ListArray<i32>;
 
@@ -230,8 +242,6 @@ where
 impl<T> ArrowDeserialize for LargeVec<T>
 where
     T: ArrowDeserialize + ArrowEnableVecForType + 'static,
-    <T as ArrowDeserialize>::ArrayType: 'static,
-    for<'b> &'b <T as ArrowDeserialize>::ArrayType: IntoIterator,
 {
     type ArrayType = ListArray<i64>;
 
@@ -243,8 +253,6 @@ where
 impl<T, const SIZE: usize> ArrowDeserialize for FixedSizeVec<T, SIZE>
 where
     T: ArrowDeserialize + ArrowEnableVecForType + 'static,
-    <T as ArrowDeserialize>::ArrayType: 'static,
-    for<'b> &'b <T as ArrowDeserialize>::ArrayType: IntoIterator,
 {
     type ArrayType = FixedSizeListArray;
 
@@ -276,17 +284,15 @@ where
     /// useful when the same rust type maps to one or more Arrow types for example `LargeString`.
     fn try_into_collection_as_type<ArrowType>(self) -> arrow2::error::Result<Collection>
     where
-        ArrowType: ArrowDeserialize + ArrowField<Type = Element> + 'static,
-        for<'b> &'b <ArrowType as ArrowDeserialize>::ArrayType: IntoIterator;
+        ArrowType: ArrowDeserialize + ArrowField<Type = Element> + 'static;
 }
 
 /// Helper to return an iterator for elements from a [`arrow2::array::Array`].
 fn arrow_array_deserialize_iterator_internal<'a, Element, Field>(
-    b: &'a dyn arrow2::array::Array,
+    b: &'a dyn Array,
 ) -> impl Iterator<Item = Element> + 'a
 where
     Field: ArrowDeserialize + ArrowField<Type = Element> + 'static,
-    for<'b> &'b <Field as ArrowDeserialize>::ArrayType: IntoIterator,
 {
     <<Field as ArrowDeserialize>::ArrayType as ArrowArray>::iter_from_array_ref(b)
         .map(<Field as ArrowDeserialize>::arrow_deserialize_internal)
@@ -294,12 +300,11 @@ where
 
 /// Returns a typed iterator to a target type from an `arrow2::Array`
 pub fn arrow_array_deserialize_iterator_as_type<'a, Element, ArrowType>(
-    arr: &'a dyn arrow2::array::Array,
+    arr: &'a dyn Array,
 ) -> arrow2::error::Result<impl Iterator<Item = Element> + 'a>
 where
     Element: 'static,
     ArrowType: ArrowDeserialize + ArrowField<Type = Element> + 'static,
-    for<'b> &'b <ArrowType as ArrowDeserialize>::ArrayType: IntoIterator,
 {
     if &<ArrowType as ArrowField>::data_type() != arr.data_type() {
         Err(arrow2::error::Error::InvalidArgumentError(
@@ -315,11 +320,10 @@ where
 
 /// Return an iterator that deserializes an [`Array`] to an element of type T
 pub fn arrow_array_deserialize_iterator<'a, T>(
-    arr: &'a dyn arrow2::array::Array,
+    arr: &'a dyn Array,
 ) -> arrow2::error::Result<impl Iterator<Item = T> + 'a>
 where
     T: ArrowDeserialize + ArrowField<Type = T> + 'static,
-    for<'b> &'b <T as ArrowDeserialize>::ArrayType: IntoIterator,
 {
     arrow_array_deserialize_iterator_as_type::<T, T>(arr)
 }
@@ -327,7 +331,6 @@ where
 impl<Collection, Element, ArrowArray> TryIntoCollection<Collection, Element> for ArrowArray
 where
     Element: ArrowDeserialize + ArrowField<Type = Element> + 'static,
-    for<'b> &'b <Element as ArrowDeserialize>::ArrayType: IntoIterator,
     ArrowArray: std::borrow::Borrow<dyn Array>,
     Collection: FromIterator<Element>,
 {
@@ -338,7 +341,6 @@ where
     fn try_into_collection_as_type<ArrowType>(self) -> arrow2::error::Result<Collection>
     where
         ArrowType: ArrowDeserialize + ArrowField<Type = Element> + 'static,
-        for<'b> &'b <ArrowType as ArrowDeserialize>::ArrayType: IntoIterator,
     {
         Ok(
             arrow_array_deserialize_iterator_as_type::<Element, ArrowType>(self.borrow())?
