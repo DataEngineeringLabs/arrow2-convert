@@ -4,6 +4,20 @@ use arrow2_convert::serialize::*;
 use arrow2_convert::ArrowField;
 
 #[test]
+fn test_optional_struct_array() {
+    #[derive(Debug, Clone, ArrowField, PartialEq)]
+    struct Foo {
+        field: i32,
+    }
+
+    let original_array = vec![Some(Foo { field: 0 }), None, Some(Foo { field: 10 })];
+    let b: Box<dyn Array> = original_array.try_into_arrow().unwrap();
+    println!("{:?}", b.data_type());
+    let round_trip: Vec<Option<Foo>> = b.try_into_collection().unwrap();
+    assert_eq!(original_array, round_trip);
+}
+
+#[test]
 fn test_nested_optional_struct_array() {
     #[derive(Debug, Clone, ArrowField, PartialEq)]
     struct Top {

@@ -265,30 +265,6 @@ pub fn expand(input: DeriveStruct) -> TokenStream {
             {}
         };
 
-        let array_impl = quote! {
-            impl arrow2_convert::deserialize::ArrowArray for #array_name
-            {
-                type BaseArrayType = arrow2::array::StructArray;
-
-                #[inline]
-                fn iter_from_array_ref<'a>(b: &'a dyn arrow2::array::Array)  -> <&'a Self as IntoIterator>::IntoIter
-                {
-                    use core::ops::Deref;
-                    let arr = b.as_any().downcast_ref::<arrow2::array::StructArray>().unwrap();
-                    let values = arr.values();
-                    let validity = arr.validity();
-                    // for now do a straight comp
-                    #iterator_name {
-                        #(
-                            #field_names: <<#field_types as arrow2_convert::deserialize::ArrowDeserialize>::ArrayType as arrow2_convert::deserialize::ArrowArray>::iter_from_array_ref(values[#field_indices].deref()),
-                        )*
-                        has_validity: validity.as_ref().is_some(),
-                        validity_iter: validity.as_ref().map(|x| x.iter()).unwrap_or_else(|| arrow2::bitmap::utils::BitmapIter::new(&[], 0, 0))
-                    }
-                }
-            }
-        };
-
         let array_into_iterator_impl = quote! {
             impl<'a> IntoIterator for &'a #array_name
             {
@@ -296,7 +272,7 @@ pub fn expand(input: DeriveStruct) -> TokenStream {
                 type IntoIter = #iterator_name<'a>;
 
                 fn into_iter(self) -> Self::IntoIter {
-                    unimplemented!("Use iter_from_array_ref");
+                    unimplemented!();
                 }
             }
         };
@@ -362,12 +338,36 @@ pub fn expand(input: DeriveStruct) -> TokenStream {
                 fn arrow_deserialize<'a>(v: Option<Self>) -> Option<Self> {
                     v
                 }
+
+                #[inline]
+                fn arrow_array_ref_into_iter(
+                    array: &dyn arrow2::array::Array,
+                ) -> Option<<#array_name as arrow2_convert::deserialize::RefIntoIterator>::Iterator<'_>>
+                where
+                    Self::ArrayType: 'static,
+                {
+                    use core::ops::Deref;
+
+                    let arr = array
+                        .as_any()
+                        .downcast_ref::<arrow2::array::StructArray>()?;
+
+                    let values = arr.values();
+                    let validity = arr.validity();
+                    // for now do a straight comp
+                    Some(#iterator_name {
+                        #(
+                            #field_names: <#field_types as arrow2_convert::deserialize::ArrowDeserialize>::arrow_array_ref_into_iter(values[#field_indices].deref())?,
+                        )*
+                        has_validity: validity.as_ref().is_some(),
+                        validity_iter: validity.as_ref().map(|x| x.iter()).unwrap_or_else(|| arrow2::bitmap::utils::BitmapIter::new(&[], 0, 0))
+                    })
+                }
             }
         };
 
         generated.extend([
             array_decl,
-            array_impl,
             array_into_iterator_impl,
             iterator_decl,
             iterator_impl,

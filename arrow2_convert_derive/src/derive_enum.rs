@@ -446,28 +446,6 @@ pub fn expand(input: DeriveEnum) -> TokenStream {
             {}
         };
 
-        let array_impl = quote! {
-            impl arrow2_convert::deserialize::ArrowArray for #array_name
-            {
-                type BaseArrayType = arrow2::array::UnionArray;
-
-                #[inline]
-                fn iter_from_array_ref<'a>(b: &'a dyn arrow2::array::Array)  -> <&'a Self as IntoIterator>::IntoIter
-                {
-                    use core::ops::Deref;
-                    let arr = b.as_any().downcast_ref::<arrow2::array::UnionArray>().unwrap();
-                    let fields = arr.fields();
-
-                    #iterator_name {
-                        #(
-                            #variant_names: <<#variant_types as arrow2_convert::deserialize::ArrowDeserialize>::ArrayType as arrow2_convert::deserialize::ArrowArray>::iter_from_array_ref(fields[#variant_indices].deref()),
-                        )*
-                        types_iter: arr.types().iter(),
-                    }
-                }
-            }
-        };
-
         let array_into_iterator_impl = quote! {
             impl<'a> IntoIterator for &'a #array_name
             {
@@ -517,12 +495,28 @@ pub fn expand(input: DeriveEnum) -> TokenStream {
                 fn arrow_deserialize<'a>(v: Option<Self>) -> Option<Self> {
                     v
                 }
+
+                #[inline]
+                fn arrow_array_ref_into_iter(
+                    array: &dyn arrow2::array::Array
+                ) -> Option<<#array_name as arrow2_convert::deserialize::RefIntoIterator>::Iterator<'_>>
+                {
+                    use core::ops::Deref;
+                    let arr = array.as_any().downcast_ref::<arrow2::array::UnionArray>()?;
+                    let fields = arr.fields();
+
+                    Some(#iterator_name {
+                        #(
+                            #variant_names: <#variant_types as arrow2_convert::deserialize::ArrowDeserialize>::arrow_array_ref_into_iter(fields[#variant_indices].deref())?,
+                        )*
+                        types_iter: arr.types().iter(),
+                    })
+                }
             }
         };
 
         generated.extend([
             array_decl,
-            array_impl,
             array_into_iterator_impl,
             array_iterator_decl,
             array_iterator_iterator_impl,
