@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with: 
-          toolchain: stable
+          toolchain: beta  # FIXME: revert to stable when 1.65 lands
           components: clippy
       - name: "clippy --all"
         run: cargo clippy --all --tests -- -D warnings
@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with: 
-          toolchain: stable
+          toolchain: beta  # FIXME: revert to stable when 1.65 lands
           components: rustfmt
       - name: Run
         run: cargo fmt --all -- --check
@@ -39,7 +39,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with: 
-          toolchain: stable
+          toolchain: beta  # FIXME: revert to stable when 1.65 lands
       - uses: Swatinem/rust-cache@v1
       - uses: taiki-e/install-action@nextest
       - name: Run
@@ -53,7 +53,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
         with: 
-          toolchain: stable
+          toolchain: beta  # FIXME: revert to stable when 1.65 lands
           components: llvm-tools-preview
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
