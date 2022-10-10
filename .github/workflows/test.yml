@@ -17,6 +17,7 @@ jobs:
         with: 
           toolchain: beta  # FIXME: revert to stable when 1.65 lands
           components: clippy
+          override: true
       - name: "clippy --all"
         run: cargo clippy --all --tests -- -D warnings
 
@@ -28,6 +29,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with: 
           toolchain: beta  # FIXME: revert to stable when 1.65 lands
+          override: true
           components: rustfmt
       - name: Run
         run: cargo fmt --all -- --check
@@ -40,6 +42,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with: 
           toolchain: beta  # FIXME: revert to stable when 1.65 lands
+          override: true
       - uses: Swatinem/rust-cache@v1
       - uses: taiki-e/install-action@nextest
       - name: Run
@@ -54,6 +57,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with: 
           toolchain: beta  # FIXME: revert to stable when 1.65 lands
+          override: true
           components: llvm-tools-preview
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
