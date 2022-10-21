@@ -4,3 +4,6 @@ members = [
     "arrow2_convert_derive",
     "examples/simple"
 ]
+
+[workspace.dependencies]
+arrow2 = { git="https://github.com/jorgecarleitao/arrow2.git", rev="27e109d" }
