@@ -2,7 +2,7 @@
 members = [
     "arrow2_convert",
     "arrow2_convert_derive",
-    "examples/simple"
+    #"examples/simple"
 ]
 
 [workspace.dependencies]

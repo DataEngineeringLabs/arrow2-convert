@@ -1,5 +1,7 @@
 //! Implementation and traits for mapping rust types to Arrow types
 
+use std::marker::PhantomData;
+
 use arrow2::datatypes::{DataType, Field};
 use chrono::{NaiveDate, NaiveDateTime};
 
@@ -122,7 +124,7 @@ impl<const PRECISION: usize, const SCALE: usize> ArrowField for I128<PRECISION, 
 }
 
 impl ArrowField for String {
-    type Type = String;
+    type Type = Self;
 
     #[inline]
     fn data_type() -> arrow2::datatypes::DataType {
@@ -130,11 +132,29 @@ impl ArrowField for String {
     }
 }
 
-/// Represents the `LargeUtf8` Arrow type
-pub struct LargeString {}
+/// Utf8 field that can be used by any type that can be converted from a String.
+pub struct GenericUtf8<O: arrow2::types::Offset, S> {
+    _data: PhantomData<S>,
+    _o: PhantomData<O>,
+}
 
-impl ArrowField for LargeString {
-    type Type = String;
+impl<'a, S> ArrowField for GenericUtf8<i32, S>
+where
+    S: From<&'a str>,
+{
+    type Type = S;
+
+    #[inline]
+    fn data_type() -> arrow2::datatypes::DataType {
+        arrow2::datatypes::DataType::Utf8
+    }
+}
+
+impl<'a, S> ArrowField for GenericUtf8<i64, S>
+where
+    S: From<&'a str>,
+{
+    type Type = S;
 
     #[inline]
     fn data_type() -> arrow2::datatypes::DataType {
@@ -169,7 +189,7 @@ impl ArrowField for NaiveDate {
     }
 }
 
-impl ArrowField for Vec<u8> {
+impl<'a> ArrowField for Vec<u8> {
     type Type = Self;
 
     #[inline]
@@ -178,11 +198,33 @@ impl ArrowField for Vec<u8> {
     }
 }
 
-/// Represents the `LargeString` Arrow type.
-pub struct LargeBinary {}
+/// Binary field that can be used by any type that can be converted from a [u8].
+pub struct GenericBinary<O: arrow2::types::Offset, C> {
+    _data: PhantomData<C>,
+    _o: PhantomData<O>,
+}
 
-impl ArrowField for LargeBinary {
-    type Type = Vec<u8>;
+impl<'a, C> ArrowField for GenericBinary<i32, C>
+where
+    Self: 'a,
+    C: FromIterator<u8>,
+    &'a C: IntoIterator<Item = &'a u8>,
+{
+    type Type = C;
+
+    #[inline]
+    fn data_type() -> arrow2::datatypes::DataType {
+        arrow2::datatypes::DataType::Binary
+    }
+}
+
+impl<'a, C> ArrowField for GenericBinary<i64, C>
+where
+    Self: 'a,
+    C: FromIterator<u8>,
+    &'a C: IntoIterator<Item = &'a u8>,
+{
+    type Type = C;
 
     #[inline]
     fn data_type() -> arrow2::datatypes::DataType {
@@ -190,11 +232,18 @@ impl ArrowField for LargeBinary {
     }
 }
 
-/// Represents the `FixedSizeBinary` Arrow type.
-pub struct FixedSizeBinary<const SIZE: usize> {}
+/// FixedSizeBinary field that can be used by any type that can be converted from a [u8].
+pub struct FixedSizeBinary<C, const SIZE: usize> {
+    _data: PhantomData<C>,
+}
 
-impl<const SIZE: usize> ArrowField for FixedSizeBinary<SIZE> {
-    type Type = Vec<u8>;
+impl<'a, C, const SIZE: usize> ArrowField for FixedSizeBinary<C, SIZE>
+where
+    Self: 'a,
+    C: FromIterator<u8>,
+    &'a C: IntoIterator<Item = &'a u8>,
+{
+    type Type = C;
 
     #[inline]
     fn data_type() -> arrow2::datatypes::DataType {
@@ -205,9 +254,9 @@ impl<const SIZE: usize> ArrowField for FixedSizeBinary<SIZE> {
 // Blanket implementation for Vec.
 impl<T> ArrowField for Vec<T>
 where
-    T: ArrowField + ArrowEnableVecForType,
+    T: ArrowField + ArrowEnableVecForType + 'static,
 {
-    type Type = Vec<<T as ArrowField>::Type>;
+    type Type = Self;
 
     #[inline]
     fn data_type() -> arrow2::datatypes::DataType {
@@ -215,16 +264,37 @@ where
     }
 }
 
-/// Represents the `LargeList` Arrow type.
-pub struct LargeVec<T> {
-    d: std::marker::PhantomData<T>,
+/// List field that can be used by any type that can be converted from a [T].
+pub struct GenericList<O: arrow2::types::Offset, C, T> {
+    _d: std::marker::PhantomData<C>,
+    _t: std::marker::PhantomData<T>,
+    _o: std::marker::PhantomData<O>,
 }
 
-impl<T> ArrowField for LargeVec<T>
+// Blanket implementation for Vec.
+impl<'a, C, T> ArrowField for GenericList<i32, C, T>
 where
-    T: ArrowField + ArrowEnableVecForType,
+    C: 'a,
+    T: ArrowField + 'static,
+    &'a C: IntoIterator<Item = &'a <T as ArrowField>::Type>,
+    C: FromIterator<<T as ArrowField>::Type>,
 {
-    type Type = Vec<<T as ArrowField>::Type>;
+    type Type = C;
+
+    #[inline]
+    fn data_type() -> arrow2::datatypes::DataType {
+        arrow2::datatypes::DataType::List(Box::new(<T as ArrowField>::field("item")))
+    }
+}
+
+impl<'a, C, T> ArrowField for GenericList<i64, C, T>
+where
+    C: 'a,
+    T: ArrowField + 'static,
+    &'a C: IntoIterator<Item = &'a <T as ArrowField>::Type>,
+    C: FromIterator<<T as ArrowField>::Type>,
+{
+    type Type = C;
 
     #[inline]
     fn data_type() -> arrow2::datatypes::DataType {
@@ -232,16 +302,20 @@ where
     }
 }
 
-/// Represents the `FixedSizeList` Arrow type.
-pub struct FixedSizeVec<T, const SIZE: usize> {
-    d: std::marker::PhantomData<T>,
+/// FixedSizeList field that can be used by any type that can be converted from a [T].
+pub struct FixedSizeList<C, T, const SIZE: usize> {
+    _data: PhantomData<C>,
+    _t: PhantomData<T>,
 }
 
-impl<T, const SIZE: usize> ArrowField for FixedSizeVec<T, SIZE>
+impl<'a, T, C, const SIZE: usize> ArrowField for FixedSizeList<C, T, SIZE>
 where
-    T: ArrowField + ArrowEnableVecForType,
+    Self: 'a,
+    T: ArrowField,
+    &'a C: IntoIterator<Item = &'a <T as ArrowField>::Type>,
+    C: FromIterator<<T as ArrowField>::Type>,
 {
-    type Type = Vec<<T as ArrowField>::Type>;
+    type Type = C;
 
     #[inline]
     fn data_type() -> arrow2::datatypes::DataType {
@@ -250,22 +324,9 @@ where
 }
 
 arrow_enable_vec_for_type!(String);
-arrow_enable_vec_for_type!(LargeString);
 arrow_enable_vec_for_type!(bool);
 arrow_enable_vec_for_type!(NaiveDateTime);
 arrow_enable_vec_for_type!(NaiveDate);
-arrow_enable_vec_for_type!(Vec<u8>);
-arrow_enable_vec_for_type!(LargeBinary);
-impl<const SIZE: usize> ArrowEnableVecForType for FixedSizeBinary<SIZE> {}
-impl<const PRECISION: usize, const SCALE: usize> ArrowEnableVecForType for I128<PRECISION, SCALE> {}
 
 // Blanket implementation for Vec<Option<T>> if vectors are enabled for T
 impl<T> ArrowEnableVecForType for Option<T> where T: ArrowField + ArrowEnableVecForType {}
-
-// Blanket implementation for Vec<Vec<T>> if vectors are enabled for T
-impl<T> ArrowEnableVecForType for Vec<T> where T: ArrowField + ArrowEnableVecForType {}
-impl<T> ArrowEnableVecForType for LargeVec<T> where T: ArrowField + ArrowEnableVecForType {}
-impl<T, const SIZE: usize> ArrowEnableVecForType for FixedSizeVec<T, SIZE> where
-    T: ArrowField + ArrowEnableVecForType
-{
-}
