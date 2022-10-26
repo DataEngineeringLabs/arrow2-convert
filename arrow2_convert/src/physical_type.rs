@@ -5,23 +5,16 @@ use std::marker::PhantomData;
 use arrow2::{
     array::{
         ArrayValuesIter, BinaryArray, BinaryValueIter, BooleanArray, FixedSizeBinaryArray,
-        FixedSizeListArray, ListArray, Utf8Array, Utf8ValuesIter,
+        FixedSizeListArray, ListArray, MutableBinaryArray, MutableBooleanArray, MutableListArray,
+        MutablePrimitiveArray, MutableUtf8Array, Utf8Array, Utf8ValuesIter,
     },
     bitmap::utils::BitmapIter,
 };
 
-/// Implemented by types that have corresponding `arrow2::Array` and `arrow2::MutableArray`
-/// implementations, that natively store elements of this type.
-///
-/// Container (struct, enum) types that are annotated by the ArrowSerialize and ArrowDeserialize derive
-/// macros, and have auto-generated `Array` and `MutableArray` definitions
-/// are also considered physical types.
-pub trait PhysicalType {}
-
 /// Implemented by physical types convert to the corresponding array types. This is
 /// used to differentiate between arrow2 value iterators (which are used for required
 /// fields), and the default iterators, which are used by optional fields.
-pub trait Array: PhysicalType {
+pub trait Array {
     /// The element of the array
     type Element<'a>
     where
@@ -38,23 +31,23 @@ pub trait Array: PhysicalType {
 /// Implemented by physical types convert to the corresponding mutable array types. This is
 /// used to differentiate between arrow2 value iterators (which are used for required
 /// fields), and the default iterators, which are used by optional fields.
-pub trait MutableArray: PhysicalType {
+pub trait MutableArrayAdapter {
     /// The element of the array
-    type Element;
-    /// The MutableArray implemenation
-    type Array: arrow2::array::TryPush<Option<Self::Element>>;
+    type Element<'a>;
+    /// The MutableArray implementation
+    type Array;
 
     /// Create a new mutable array
     fn new_array() -> Self::Array;
     /// Push an element into the mutable array.
-    fn try_push(array: &mut Self::Array, repr: Self::Element);
+    fn try_push(array: &mut Self::Array, element: Self::Element<'_>) -> arrow2::error::Result<()>;
 }
 
 /// A physical type that's nullable
 #[derive(Default)]
-pub struct Nullable<T>
+pub struct NullableArray<T>
 where
-    T: PhysicalType,
+    T: Array,
 {
     _data: PhantomData<T>,
 }
@@ -82,10 +75,8 @@ declare_offset_type!(List);
 pub struct FixedSizeList<const SIZE: usize> {}
 
 macro_rules! impl_physical_type_generic {
-    ($t:ty, $element_type:ty, $array_type:ty, $iter_type:ty) => {
-        impl $crate::physical_type::PhysicalType for $t {}
-
-        impl Array for $t {
+    ($t:ty, $element_type:ty, $array_type:ty, $iter_type:ty, $mutable_array_type:ty) => {
+        impl ArrayAdapter for $t {
             type Element<'a> = $element_type;
             type Iter<'a> = $iter_type;
 
@@ -94,12 +85,26 @@ macro_rules! impl_physical_type_generic {
             }
         }
 
-        impl Array for Nullable<$t> {
+        impl ArrayAdapter for NullableArray<$t> {
             type Element<'a> = Option<$element_type>;
             type Iter<'a> = <&'a $array_type as IntoIterator>::IntoIter;
 
             fn into_iter(array: &dyn arrow2::array::Array) -> Option<Self::Iter<'_>> {
                 Some(array.as_any().downcast_ref::<$array_type>()?.iter())
+            }
+        }
+
+        impl MutableArrayAdapter for $t {
+            type Element<'a> = $t;
+            type Array = $mutable_array_type;
+
+            fn new_array() -> Self::Array {
+                Self::Array::new()
+            }
+
+            fn try_push(array: &mut Self::Array, e: $t) -> arrow2::error::Result<()> {
+                use arrow2::array::TryPush;
+                array.try_push(Some(e))
             }
         }
     };
@@ -108,10 +113,10 @@ macro_rules! impl_physical_type_generic {
 // TODO: consolidate with above macro with generic type bounds. didn't figure out a way
 // to include where bounds in macros by example.
 macro_rules! impl_physical_type_with_offset {
-    ($t:ty, $element_type:ty, $array_type:ty, $iter_type:ty) => {
+    ($t:ty, $element_type:ty, $array_type:ty, $iter_type:ty, $mutable_array_type:ty) => {
         impl<O: arrow2::types::Offset> $crate::physical_type::PhysicalType for $t {}
 
-        impl<O: arrow2::types::Offset> Array for $t {
+        impl<O: arrow2::types::Offset> ArrayAdapter for $t {
             type Element<'a> = $element_type;
             type Iter<'a> = $iter_type;
 
@@ -120,12 +125,29 @@ macro_rules! impl_physical_type_with_offset {
             }
         }
 
-        impl<O: arrow2::types::Offset> Array for Nullable<$t> {
+        impl<O: arrow2::types::Offset> ArrayAdapter for Nullable<$t> {
             type Element<'a> = Option<$element_type>;
             type Iter<'a> = <&'a $array_type as IntoIterator>::IntoIter;
 
             fn into_iter(array: &dyn arrow2::array::Array) -> Option<Self::Iter<'_>> {
                 Some(array.as_any().downcast_ref::<$array_type>()?.iter())
+            }
+        }
+
+        impl<O: arrow2::types::Offset> MutableArrayAdapter for $t {
+            type Element<'a> = $element_type;
+            type Array = $mutable_array_type;
+
+            fn new_array() -> Self::Array {
+                Self::Array::new()
+            }
+
+            fn try_push<'a>(
+                array: &mut Self::Array,
+                e: $element_type,
+            ) -> arrow2::error::Result<()> {
+                use arrow2::array::TryPush;
+                array.try_push(Some(e))
             }
         }
     };
@@ -137,7 +159,7 @@ macro_rules! impl_physical_type_with_size {
     ($t:ty, $element_type:ty, $array_type:ty, $iter_type:ty) => {
         impl<const SIZE: usize> $crate::physical_type::PhysicalType for $t {}
 
-        impl<const SIZE: usize> Array for $t {
+        impl<const SIZE: usize> ArrayAdapter for $t {
             type Element<'a> = $element_type;
             type Iter<'a> = $iter_type;
 
@@ -146,7 +168,7 @@ macro_rules! impl_physical_type_with_size {
             }
         }
 
-        impl<const SIZE: usize> Array for Nullable<$t> {
+        impl<const SIZE: usize> ArrayAdapter for Nullable<$t> {
             type Element<'a> = Option<$element_type>;
             type Iter<'a> = <&'a $array_type as IntoIterator>::IntoIter;
 
@@ -163,12 +185,13 @@ macro_rules! impl_numeric_type {
             $t,
             &'a $t,
             arrow2::array::PrimitiveArray<$t>,
-            std::slice::Iter<'a, $t>
+            std::slice::Iter<'a, $t>,
+            MutablePrimitiveArray<$t>
         );
     };
 }
 
-impl<T: PhysicalType> PhysicalType for Nullable<T> {}
+impl<T: PhysicalType> PhysicalType for NullableArray<T> {}
 
 impl_numeric_type!(u8);
 impl_numeric_type!(u16);
@@ -182,9 +205,29 @@ impl_numeric_type!(i128);
 impl_numeric_type!(f32);
 impl_numeric_type!(f64);
 
-impl_physical_type_generic!(bool, bool, BooleanArray, BitmapIter<'a>);
-impl_physical_type_with_offset!(Utf8<O>, &'a str, Utf8Array<O>, Utf8ValuesIter<'a, O>);
-impl_physical_type_with_offset!(Binary<O>, &'a [u8], BinaryArray<O>, BinaryValueIter<'a, O>);
+impl_physical_type_generic!(
+    bool,
+    bool,
+    BooleanArray,
+    BitmapIter<'a>,
+    MutableBooleanArray
+);
+
+impl_physical_type_with_offset!(
+    Utf8<O>,
+    &'a str,
+    Utf8Array<O>,
+    Utf8ValuesIter<'a, O>,
+    MutableUtf8Array<O>
+);
+
+impl_physical_type_with_offset!(
+    Binary<O>,
+    &'a [u8],
+    BinaryArray<O>,
+    BinaryValueIter<'a, O>,
+    MutableBinaryArray<O>
+);
 
 impl_physical_type_with_size!(
     FixedSizeBinary<SIZE>,
@@ -197,7 +240,8 @@ impl_physical_type_with_offset!(
     List<O>,
     Box<dyn arrow2::array::Array>,
     ListArray<O>,
-    ArrayValuesIter<'a, ListArray<O>>
+    ArrayValuesIter<'a, ListArray<O>>,
+    MutableListArray<O, >
 );
 
 impl_physical_type_with_size!(
