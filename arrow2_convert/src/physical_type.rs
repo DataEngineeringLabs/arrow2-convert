@@ -11,22 +11,6 @@ use arrow2::{
     bitmap::utils::BitmapIter,
 };
 
-/// Implemented by physical types convert to the corresponding array types. This is
-/// used to differentiate between arrow2 value iterators (which are used for required
-/// fields), and the default iterators, which are used by optional fields.
-pub trait Array {
-    /// The element of the array
-    type Element<'a>
-    where
-        Self: 'a;
-    /// Iterator over the elements
-    type Iter<'a>: Iterator<Item = Self::Element<'a>>
-    where
-        Self: 'a;
-
-    /// Convert an untyped array into an iterator
-    fn into_iter(array: &dyn arrow2::array::Array) -> Option<Self::Iter<'_>>;
-}
 
 /// Implemented by physical types convert to the corresponding mutable array types. This is
 /// used to differentiate between arrow2 value iterators (which are used for required

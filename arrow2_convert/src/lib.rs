@@ -4,9 +4,8 @@
 
 pub mod deserialize;
 pub mod field;
-//pub mod nullable;
 //pub mod physical_type;
-//pub mod serialize;
+pub mod serialize;
 
 // The proc macro is implemented in derive_internal, and re-exported by this
 // crate. This is because a single crate can not define both a proc macro and a
