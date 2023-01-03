@@ -1,9 +1,12 @@
 use arrow2::array::*;
-use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow, ArrowField};
+use arrow2_convert::{
+    deserialize::TryIntoCollection, serialize::TryIntoArrow, ArrowDeserialize, ArrowField,
+    ArrowSerialize,
+};
 
 #[test]
 fn test_dense_enum_unit_variant() {
-    #[derive(Debug, PartialEq, ArrowField)]
+    #[derive(Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
     #[arrow_field(type = "dense")]
     enum TestEnum {
         VAL1,
@@ -25,7 +28,7 @@ fn test_dense_enum_unit_variant() {
 
 #[test]
 fn test_sparse_enum_unit_variant() {
-    #[derive(Debug, PartialEq, ArrowField)]
+    #[derive(Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
     #[arrow_field(type = "sparse")]
     enum TestEnum {
         VAL1,
@@ -47,12 +50,12 @@ fn test_sparse_enum_unit_variant() {
 
 #[test]
 fn test_nested_unit_variant() {
-    #[derive(Debug, PartialEq, ArrowField)]
+    #[derive(Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
     struct TestStruct {
         a1: i64,
     }
 
-    #[derive(Debug, PartialEq, ArrowField)]
+    #[derive(Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
     #[arrow_field(type = "dense")]
     enum TestEnum {
         VAL1,
@@ -62,7 +65,7 @@ fn test_nested_unit_variant() {
         VAL5(ChildEnum),
     }
 
-    #[derive(Debug, PartialEq, ArrowField)]
+    #[derive(Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
     #[arrow_field(type = "sparse")]
     enum ChildEnum {
         VAL1,
@@ -87,12 +90,12 @@ fn test_nested_unit_variant() {
 //#[test]
 #[allow(unused)]
 fn test_slice() {
-    #[derive(Debug, PartialEq, ArrowField)]
+    #[derive(Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
     struct TestStruct {
         a1: i64,
     }
 
-    #[derive(Debug, PartialEq, ArrowField)]
+    #[derive(Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
     #[arrow_field(type = "dense")]
     enum TestEnum {
         VAL1,
@@ -102,7 +105,7 @@ fn test_slice() {
         VAL5(ChildEnum),
     }
 
-    #[derive(Debug, PartialEq, ArrowField)]
+    #[derive(Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
     #[arrow_field(type = "sparse")]
     enum ChildEnum {
         VAL1,

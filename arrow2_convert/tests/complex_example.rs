@@ -5,10 +5,10 @@ use arrow2_convert::serialize::TryIntoArrow;
 ///
 /// - Deeply Nested structs and lists
 /// - Custom types
-use arrow2_convert::ArrowField;
+use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 use std::borrow::Borrow;
 
-#[derive(Debug, Clone, PartialEq, ArrowField)]
+#[derive(Debug, Clone, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct Root {
     name: Option<String>,
     is_deleted: bool,
@@ -55,7 +55,7 @@ pub struct Root {
     fixed_size_vec: Vec<i64>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, ArrowField)]
+#[derive(Debug, Clone, PartialEq, Eq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct Child {
     a1: i64,
     a2: String,
@@ -63,7 +63,7 @@ pub struct Child {
     child_array: Vec<ChildChild>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, ArrowField)]
+#[derive(Debug, Clone, PartialEq, Eq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct ChildChild {
     a1: i32,
     bool_array: Vec<bool>,

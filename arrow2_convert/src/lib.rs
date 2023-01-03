@@ -11,7 +11,7 @@ pub mod serialize;
 // macro_rules macro.
 #[cfg(feature = "arrow2_convert_derive")]
 #[doc(hidden)]
-pub use arrow2_convert_derive::ArrowField;
+pub use arrow2_convert_derive::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
 // Test README with doctests
 #[doc = include_str!("../README.md")]

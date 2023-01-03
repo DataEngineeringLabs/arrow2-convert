@@ -14,9 +14,9 @@ Please see the [complex_example.rs](./arrow2_convert/tests/complex_example.rs) f
 /// Simple example
 
 use arrow2::array::Array;
-use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow, ArrowField};
+use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow, ArrowField, ArrowSerialize, ArrowDeserialize};
 
-#[derive(Debug, Clone, PartialEq, ArrowField)]
+#[derive(Debug, Clone, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct Foo {
     name: String,
 }
