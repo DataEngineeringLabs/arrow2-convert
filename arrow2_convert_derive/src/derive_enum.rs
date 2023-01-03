@@ -327,7 +327,7 @@ pub fn expand_serialize(input: DeriveEnum) -> TokenStream {
                     <#mutable_variant_array_types as arrow2::array::MutableArray>::as_box(&mut self.#variant_names),
                 )*];
 
-                Box::new(arrow2::array::UnionArray::from_data(
+                    Box::new(arrow2::array::UnionArray::new(
                     <#original_name as arrow2_convert::field::ArrowField>::data_type().clone(),
                     std::mem::take(&mut self.types).into(),
                     values,
@@ -340,7 +340,7 @@ pub fn expand_serialize(input: DeriveEnum) -> TokenStream {
                     <#mutable_variant_array_types as arrow2::array::MutableArray>::as_box(&mut self.#variant_names),
                 )*];
 
-                std::sync::Arc::new(arrow2::array::UnionArray::from_data(
+                    std::sync::Arc::new(arrow2::array::UnionArray::new(
                     <#original_name as arrow2_convert::field::ArrowField>::data_type().clone(),
                     std::mem::take(&mut self.types).into(),
                     values,
