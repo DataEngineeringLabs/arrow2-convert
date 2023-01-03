@@ -47,7 +47,7 @@ fn main() {
 
 Types that implement the `ArrowField`, `ArrowSerialize` and `ArrowDeserialize` traits can be converted to/from Arrow via the `try_into_arrow` and the `try_into_collection` methods. 
 
-The `ArrowField` derive macro can be used to generate implementations of these traits for structs and enums. Custom implementations can also be defined for any type that needs to convert to/from Arrow by manually implementing the traits.
+The `ArrowField`, `ArrowSerialize` and `ArrowDeserialize` derive macros can be used to generate implementations of these traits for structs and enums. Custom implementations can also be defined for any type that needs to convert to/from Arrow by manually implementing the traits.
 
 For serializing to arrow, `TryIntoArrow::try_into_arrow` can be used to serialize any iterable into an `arrow2::Array` or a `arrow2::Chunk`.  `arrow2::Array` represents the in-memory Arrow layout. `arrow2::Chunk` represents a column group and can be used with `arrow2` API for other functionality such converting to parquet and arrow flight RPC.
 
