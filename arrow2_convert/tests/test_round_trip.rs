@@ -6,18 +6,18 @@ use arrow2_convert::field::{LargeBinary, I128};
 use arrow2_convert::serialize::*;
 use arrow2_convert::{
     field::{FixedSizeBinary, FixedSizeVec, LargeString, LargeVec},
-    ArrowField,
+    ArrowDeserialize, ArrowField, ArrowSerialize,
 };
 use std::borrow::Borrow;
 use std::sync::Arc;
 
 #[test]
 fn test_nested_optional_struct_array() {
-    #[derive(Debug, Clone, ArrowField, PartialEq)]
+    #[derive(Debug, Clone, ArrowField, ArrowSerialize, ArrowDeserialize, PartialEq)]
     struct Top {
         child_array: Vec<Option<Child>>,
     }
-    #[derive(Debug, Clone, ArrowField, PartialEq)]
+    #[derive(Debug, Clone, ArrowField, ArrowSerialize, ArrowDeserialize, PartialEq)]
     struct Child {
         a1: i64,
     }
@@ -237,7 +237,7 @@ fn test_primitive_type_vec() {
 
 #[test]
 fn test_escaped_name() {
-    #[derive(ArrowField, Debug, Eq, PartialEq)]
+    #[derive(ArrowField, ArrowSerialize, ArrowDeserialize, Debug, Eq, PartialEq)]
     struct EscapedName {
         r#type: bool,
     }

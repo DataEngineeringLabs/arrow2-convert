@@ -5,10 +5,10 @@ use arrow2_convert::serialize::TryIntoArrow;
 ///
 /// - Deeply Nested structs and lists
 /// - Custom types
-use arrow2_convert::ArrowField;
+use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 use std::borrow::Borrow;
 
-#[derive(Debug, Clone, PartialEq, ArrowField)]
+#[derive(Debug, Clone, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct Root {
     name: Option<String>,
     is_deleted: bool,
@@ -55,7 +55,7 @@ pub struct Root {
     fixed_size_vec: Vec<i64>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, ArrowField)]
+#[derive(Debug, Clone, PartialEq, Eq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct Child {
     a1: i64,
     a2: String,
@@ -63,7 +63,7 @@ pub struct Child {
     child_array: Vec<ChildChild>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, ArrowField)]
+#[derive(Debug, Clone, PartialEq, Eq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct ChildChild {
     a1: i32,
     bool_array: Vec<bool>,
@@ -126,12 +126,12 @@ fn item1() -> Root {
         a1: Some(0.1),
         a2: 1,
         a3: Some(b"aa".to_vec()),
-        a4: NaiveDate::from_ymd(1970, 1, 2),
-        a5: NaiveDateTime::from_timestamp(10000, 0),
-        a6: Some(NaiveDateTime::from_timestamp(10001, 0)),
+        a4: NaiveDate::from_ymd_opt(1970, 1, 2).unwrap(),
+        a5: NaiveDateTime::from_timestamp_opt(10000, 0).unwrap(),
+        a6: Some(NaiveDateTime::from_timestamp_opt(10001, 0)).unwrap(),
         date_time_list: vec![
-            NaiveDateTime::from_timestamp(10000, 10),
-            NaiveDateTime::from_timestamp(10000, 11),
+            NaiveDateTime::from_timestamp_opt(10000, 10).unwrap(),
+            NaiveDateTime::from_timestamp_opt(10000, 11).unwrap(),
         ],
         nullable_list: Some(vec![Some("cc".to_string()), Some("dd".to_string())]),
         required_list: vec![Some("aa".to_string()), Some("bb".to_string())],
@@ -172,12 +172,12 @@ fn item2() -> Root {
         a1: Some(0.1),
         a2: 1,
         a3: Some(b"aa".to_vec()),
-        a4: NaiveDate::from_ymd(1970, 1, 2),
-        a5: NaiveDateTime::from_timestamp(10000, 0),
+        a4: NaiveDate::from_ymd_opt(1970, 1, 2).unwrap(),
+        a5: NaiveDateTime::from_timestamp_opt(10000, 0).unwrap(),
         a6: None,
         date_time_list: vec![
-            NaiveDateTime::from_timestamp(10000, 10),
-            NaiveDateTime::from_timestamp(10000, 11),
+            NaiveDateTime::from_timestamp_opt(10000, 10).unwrap(),
+            NaiveDateTime::from_timestamp_opt(10000, 11).unwrap(),
         ],
         nullable_list: None,
         required_list: vec![Some("ee".to_string()), Some("ff".to_string())],

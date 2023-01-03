@@ -8,23 +8,10 @@ pub const FIELD_TYPE: &str = "type";
 pub const UNION_TYPE: &str = "type";
 pub const UNION_TYPE_SPARSE: &str = "sparse";
 pub const UNION_TYPE_DENSE: &str = "dense";
-pub const FIELD_ONLY: &str = "field_only";
-pub const SERIALIZE_ONLY: &str = "serialize_only";
-pub const DESERIALIZE_ONLY: &str = "deserialize_only";
-
-#[derive(Clone)]
-pub enum TraitsToDerive {
-    FieldOnly,
-    SerializeOnly,
-    DeserializeOnly,
-    All,
-}
 
 pub struct DeriveCommon {
     /// The input name
     pub name: Ident,
-    /// The traits to derive
-    pub traits_to_derive: TraitsToDerive,
     /// The overall visibility
     pub visibility: Visibility,
 }
@@ -43,7 +30,6 @@ pub struct DeriveEnum {
 }
 /// All container attributes
 pub struct ContainerAttrs {
-    pub traits_to_derive: Option<TraitsToDerive>,
     pub is_dense: Option<bool>,
 }
 
@@ -64,13 +50,9 @@ pub struct DeriveVariant {
 }
 
 impl DeriveCommon {
-    pub fn from_ast(input: &DeriveInput, container_attrs: &ContainerAttrs) -> DeriveCommon {
+    pub fn from_ast(input: &DeriveInput, _container_attrs: &ContainerAttrs) -> DeriveCommon {
         DeriveCommon {
             name: input.ident.clone(),
-            traits_to_derive: container_attrs
-                .traits_to_derive
-                .clone()
-                .unwrap_or(TraitsToDerive::All),
             visibility: input.vis.clone(),
         }
     }
@@ -90,7 +72,6 @@ impl DeriveCommon {
 
 impl ContainerAttrs {
     pub fn from_ast(attrs: &[syn::Attribute]) -> ContainerAttrs {
-        let mut traits_to_derive: Option<TraitsToDerive> = None;
         let mut is_dense: Option<bool> = None;
 
         for attr in attrs {
@@ -121,39 +102,7 @@ impl ContainerAttrs {
                                                 }
                                             }
                                         } else {
-                                            for value in string.value().split(',') {
-                                                match value {
-                                                    FIELD_ONLY | SERIALIZE_ONLY
-                                                    | DESERIALIZE_ONLY => {
-                                                        if traits_to_derive.is_some() {
-                                                            abort!(string.span(), "Only one of field_only, serialize-only or deserialize_only can be specified");
-                                                        }
-
-                                                        match value {
-                                                            FIELD_ONLY => {
-                                                                traits_to_derive =
-                                                                    Some(TraitsToDerive::FieldOnly);
-                                                            }
-                                                            SERIALIZE_ONLY => {
-                                                                traits_to_derive = Some(
-                                                                    TraitsToDerive::SerializeOnly,
-                                                                );
-                                                            }
-                                                            DESERIALIZE_ONLY => {
-                                                                traits_to_derive = Some(
-                                                                    TraitsToDerive::DeserializeOnly,
-                                                                );
-                                                            }
-                                                            _ => panic!("Unexpected {}", value), // intentionally leave as panic since we should never get here
-                                                        }
-                                                    }
-                                                    _ => abort!(
-                                                        string.span(),
-                                                        "Unexpected {}",
-                                                        value
-                                                    ),
-                                                }
-                                            }
+                                            abort!(path.span(), "Unexpected attribute");
                                         }
                                     }
                                     _ => {
@@ -167,10 +116,7 @@ impl ContainerAttrs {
             }
         }
 
-        ContainerAttrs {
-            traits_to_derive,
-            is_dense,
-        }
+        ContainerAttrs { is_dense }
     }
 }
 
@@ -279,30 +225,5 @@ impl DeriveVariant {
             field_type: attrs.field_type.unwrap_or_else(|| field_type.clone()),
             is_unit,
         }
-    }
-}
-
-impl TraitsToDerive {
-    // Helper method for identifying the traits to derive
-    pub fn to_flags(&self) -> (bool, bool) {
-        let mut gen_serialize = true;
-        let mut gen_deserialize = true;
-
-        // setup the flags
-        match self {
-            TraitsToDerive::All => { /* do nothing */ }
-            TraitsToDerive::DeserializeOnly => {
-                gen_serialize = false;
-            }
-            TraitsToDerive::SerializeOnly => {
-                gen_deserialize = false;
-            }
-            TraitsToDerive::FieldOnly => {
-                gen_deserialize = false;
-                gen_serialize = false;
-            }
-        }
-
-        (gen_serialize, gen_deserialize)
     }
 }

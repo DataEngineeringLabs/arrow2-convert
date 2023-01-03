@@ -1,12 +1,11 @@
 use arrow2::array::*;
 use arrow2::chunk::Chunk;
-use arrow2_convert::serialize::*;
-use arrow2_convert::ArrowField;
+use arrow2_convert::{serialize::*, ArrowField, ArrowSerialize};
 use std::sync::Arc;
 
 #[test]
 fn test_flatten_chunk() {
-    #[derive(Debug, Clone, ArrowField)]
+    #[derive(Debug, Clone, ArrowField, ArrowSerialize)]
     struct Struct {
         a: i64,
         b: i64,
@@ -35,7 +34,7 @@ fn test_flatten_chunk_empty_chunk_error() {
 
 #[test]
 fn test_flatten_chunk_no_single_struct_array_error() {
-    #[derive(Debug, Clone, ArrowField)]
+    #[derive(Debug, Clone, ArrowField, ArrowSerialize)]
     struct Struct {
         a: i64,
         b: String,

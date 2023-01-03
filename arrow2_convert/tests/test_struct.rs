@@ -1,15 +1,13 @@
 use arrow2::array::*;
-use arrow2_convert::deserialize::*;
-use arrow2_convert::serialize::*;
-use arrow2_convert::ArrowField;
+use arrow2_convert::{deserialize::*, serialize::*, ArrowDeserialize, ArrowField, ArrowSerialize};
 
 #[test]
 fn test_nested_optional_struct_array() {
-    #[derive(Debug, Clone, ArrowField, PartialEq)]
+    #[derive(Debug, Clone, ArrowField, ArrowSerialize, ArrowDeserialize, PartialEq)]
     struct Top {
         child_array: Vec<Option<Child>>,
     }
-    #[derive(Debug, Clone, ArrowField, PartialEq)]
+    #[derive(Debug, Clone, ArrowField, ArrowSerialize, ArrowDeserialize, PartialEq)]
     struct Child {
         a1: i64,
     }
@@ -38,7 +36,7 @@ fn test_nested_optional_struct_array() {
 
 #[test]
 fn test_slice() {
-    #[derive(Debug, Clone, ArrowField, PartialEq)]
+    #[derive(Debug, Clone, ArrowField, ArrowSerialize, ArrowDeserialize, PartialEq)]
     struct T {
         a1: i64,
     }
@@ -57,11 +55,11 @@ fn test_slice() {
 
 #[test]
 fn test_nested_slice() {
-    #[derive(Debug, Clone, ArrowField, PartialEq)]
+    #[derive(Debug, Clone, ArrowField, ArrowSerialize, ArrowDeserialize, PartialEq)]
     struct Top {
         child_array: Vec<Option<Child>>,
     }
-    #[derive(Debug, Clone, ArrowField, PartialEq)]
+    #[derive(Debug, Clone, ArrowField, ArrowSerialize, ArrowDeserialize, PartialEq)]
     struct Child {
         a1: i64,
     }

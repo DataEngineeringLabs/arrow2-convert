@@ -1,8 +1,6 @@
 use arrow2::array::*;
 use arrow2::error::Result;
-use arrow2_convert::deserialize::*;
-use arrow2_convert::serialize::*;
-use arrow2_convert::ArrowField;
+use arrow2_convert::{deserialize::*, serialize::*, ArrowDeserialize, ArrowField, ArrowSerialize};
 
 #[test]
 fn test_deserialize_iterator() {
@@ -11,7 +9,7 @@ fn test_deserialize_iterator() {
     use arrow2_convert::serialize::*;
     use std::borrow::Borrow;
 
-    #[derive(Debug, Clone, PartialEq, ArrowField)]
+    #[derive(Debug, Clone, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
     struct S {
         a1: i64,
     }
@@ -34,11 +32,11 @@ fn test_deserialize_iterator() {
 
 #[test]
 fn test_deserialize_schema_mismatch_error() {
-    #[derive(Debug, Clone, PartialEq, ArrowField)]
+    #[derive(Debug, Clone, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
     struct S1 {
         a: i64,
     }
-    #[derive(Debug, Clone, PartialEq, ArrowField)]
+    #[derive(Debug, Clone, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
     struct S2 {
         a: String,
     }
@@ -56,11 +54,11 @@ fn test_deserialize_schema_mismatch_error() {
 
 #[test]
 fn test_deserialize_large_types_schema_mismatch_error() {
-    #[derive(Debug, Clone, PartialEq, ArrowField)]
+    #[derive(Debug, Clone, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
     struct S1 {
         a: String,
     }
-    #[derive(Debug, Clone, PartialEq, ArrowField)]
+    #[derive(Debug, Clone, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
     struct S2 {
         #[arrow_field(type = "arrow2_convert::field::LargeString")]
         a: String,

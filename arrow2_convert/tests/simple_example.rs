@@ -1,8 +1,11 @@
 /// Simple example
 use arrow2::array::Array;
-use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow, ArrowField};
+use arrow2_convert::{
+    deserialize::TryIntoCollection, serialize::TryIntoArrow, ArrowDeserialize, ArrowField,
+    ArrowSerialize,
+};
 
-#[derive(Debug, Clone, PartialEq, Eq, ArrowField)]
+#[derive(Debug, Clone, PartialEq, Eq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct Foo {
     name: String,
 }

@@ -4,6 +4,7 @@ use arrow2_convert::ArrowField;
 #[test]
 fn test_schema_types() {
     #[derive(Debug, ArrowField)]
+    #[allow(dead_code)]
     struct Root {
         name: Option<String>,
         is_deleted: bool,
@@ -54,6 +55,7 @@ fn test_schema_types() {
     }
 
     #[derive(Debug, ArrowField)]
+    #[allow(dead_code)]
     struct Child {
         a1: i64,
         a2: String,
@@ -62,6 +64,7 @@ fn test_schema_types() {
     }
 
     #[derive(Debug, ArrowField)]
+    #[allow(dead_code)]
     pub struct ChildChild {
         a1: i32,
         bool_array: Vec<bool>,

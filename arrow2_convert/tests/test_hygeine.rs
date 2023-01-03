@@ -2,6 +2,7 @@
 use arrow2_convert_derive::ArrowField;
 
 #[derive(ArrowField)]
+#[allow(dead_code)]
 struct S {
     int_field: i64,
 }
