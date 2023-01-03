@@ -80,7 +80,6 @@ impl ContainerAttrs {
                     if let Meta::List(list) = meta {
                         for nested in list.nested {
                             if let syn::NestedMeta::Meta(meta) = nested {
-                                dbg!(&meta);
                                 match meta {
                                     syn::Meta::NameValue(MetaNameValue {
                                         lit: Lit::Str(string),
