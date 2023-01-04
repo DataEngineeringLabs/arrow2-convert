@@ -1,4 +1,4 @@
-#![doc = include_str!("../README.md")]
+#![cfg_attr(not(target_os = "windows"), doc = include_str!("../README.md"))]
 #![deny(missing_docs)]
 #![forbid(unsafe_code)]
 
@@ -14,6 +14,6 @@ pub mod serialize;
 pub use arrow2_convert_derive::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
 // Test README with doctests
-#[doc = include_str!("../README.md")]
+#[cfg_attr(not(target_os = "windows"), doc = include_str!("../README.md"))]
 #[cfg(doctest)]
 struct ReadmeDoctests;
