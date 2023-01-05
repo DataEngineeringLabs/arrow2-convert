@@ -217,7 +217,7 @@ pub fn expand_serialize(input: DeriveStruct) -> TokenStream {
                     <#mutable_field_array_types as arrow2::array::MutableArray>::as_box(&mut self.#field_names),
                 )*];
 
-                Box::new(arrow2::array::StructArray::from_data(
+                    Box::new(arrow2::array::StructArray::new(
                     <#original_name as arrow2_convert::field::ArrowField>::data_type().clone(),
                     values,
                     std::mem::take(&mut self.validity).map(|x| x.into()),
@@ -229,7 +229,7 @@ pub fn expand_serialize(input: DeriveStruct) -> TokenStream {
                     <#mutable_field_array_types as arrow2::array::MutableArray>::as_box(&mut self.#field_names),
                 )*];
 
-                std::sync::Arc::new(arrow2::array::StructArray::from_data(
+                    std::sync::Arc::new(arrow2::array::StructArray::new(
                     <#original_name as arrow2_convert::field::ArrowField>::data_type().clone(),
                     values,
                     std::mem::take(&mut self.validity).map(|x| x.into())
