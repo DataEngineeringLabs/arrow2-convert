@@ -9,6 +9,7 @@ struct Common<'a> {
     original_name: &'a proc_macro2::Ident,
     visibility: &'a syn::Visibility,
     field_names: Vec<&'a proc_macro2::Ident>,
+    skipped_field_names: Vec<&'a proc_macro2::Ident>,
     field_names_str: Vec<syn::LitStr>,
     field_indices: Vec<syn::LitInt>,
     field_types: Vec<&'a syn::TypePath>,
@@ -18,10 +19,18 @@ impl<'a> From<&'a DeriveStruct> for Common<'a> {
     fn from(input: &'a DeriveStruct) -> Self {
         let original_name = &input.common.name;
         let visibility = &input.common.visibility;
-        let fields = &input.fields;
 
         //let (gen_serialize, gen_deserialize) = input.common.traits_to_derive.to_flags();
+        let (skipped_fields, fields): (Vec<_>, Vec<_>) = input.fields
+            .iter()
+            .partition(|field| field.skip);
+
         let field_names = fields
+            .iter()
+            .map(|field| field.syn.ident.as_ref().unwrap())
+            .collect::<Vec<_>>();
+
+        let skipped_field_names = skipped_fields
             .iter()
             .map(|field| field.syn.ident.as_ref().unwrap())
             .collect::<Vec<_>>();
@@ -63,6 +72,7 @@ impl<'a> From<&'a DeriveStruct> for Common<'a> {
             original_name,
             visibility,
             field_names,
+            skipped_field_names,
             field_names_str,
             field_indices,
             field_types,
@@ -300,6 +310,7 @@ pub fn expand_deserialize(input: DeriveStruct) -> TokenStream {
         original_name,
         visibility,
         field_names,
+        skipped_field_names,
         field_indices,
         field_types,
         ..
@@ -371,6 +382,7 @@ pub fn expand_deserialize(input: DeriveStruct) -> TokenStream {
                 {
                     Some(#original_name {
                         #(#field_names: <#field_types as arrow2_convert::deserialize::ArrowDeserialize>::arrow_deserialize_internal(#field_names),)*
+                        #(#skipped_field_names: std::default::Default::default(),)*
                     })
                 }
                 else {

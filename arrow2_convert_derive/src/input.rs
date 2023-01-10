@@ -5,6 +5,7 @@ use syn::{DeriveInput, Ident, Lit, Meta, MetaNameValue, Visibility};
 
 pub const ARROW_FIELD: &str = "arrow_field";
 pub const FIELD_TYPE: &str = "type";
+pub const FIELD_SKIP: &str = "skip";
 pub const UNION_TYPE: &str = "type";
 pub const UNION_TYPE_SPARSE: &str = "sparse";
 pub const UNION_TYPE_DENSE: &str = "dense";
@@ -36,11 +37,13 @@ pub struct ContainerAttrs {
 /// All field attributes
 pub struct FieldAttrs {
     pub field_type: Option<syn::Type>,
+    pub skip: bool,
 }
 
 pub struct DeriveField {
     pub syn: syn::Field,
     pub field_type: syn::Type,
+    pub skip: bool
 }
 
 pub struct DeriveVariant {
@@ -123,6 +126,7 @@ impl ContainerAttrs {
 impl FieldAttrs {
     pub fn from_ast(input: &[syn::Attribute]) -> FieldAttrs {
         let mut field_type: Option<syn::Type> = None;
+        let mut skip = false;
 
         for attr in input {
             if let Ok(meta) = attr.parse_meta() {
@@ -135,13 +139,11 @@ impl FieldAttrs {
                                         lit: Lit::Str(string),
                                         path,
                                         ..
-                                    }) => {
-                                        if path.is_ident(FIELD_TYPE) {
-                                            field_type = Some(
-                                                syn::parse_str(&string.value()).unwrap_or_abort(),
-                                            );
-                                        }
+                                    }) if path.is_ident(FIELD_TYPE) => {
+                                        field_type =
+                                            Some(syn::parse_str(&string.value()).unwrap_or_abort());
                                     }
+                                    Meta::Path(path) if path.is_ident(FIELD_SKIP) => skip = true,
                                     _ => {
                                         abort!(meta.span(), "Unexpected attribute");
                                     }
@@ -153,7 +155,7 @@ impl FieldAttrs {
             }
         }
 
-        FieldAttrs { field_type }
+        FieldAttrs { field_type, skip }
     }
 }
 
@@ -199,6 +201,7 @@ impl DeriveField {
         DeriveField {
             syn: input.clone(),
             field_type: attrs.field_type.unwrap_or_else(|| input.ty.clone()),
+            skip: attrs.skip,
         }
     }
 }
