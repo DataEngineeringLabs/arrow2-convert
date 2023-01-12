@@ -27,10 +27,12 @@ impl<'a> From<&'a DeriveStruct> for Common<'a> {
             .iter()
             .enumerate()
             .map(|(id, field)| {
-                field.syn.ident.as_ref().cloned().map_or_else(
-                    || syn::Member::Unnamed(id.into()),
-                    |field| syn::Member::Named(field),
-                )
+                field
+                    .syn
+                    .ident
+                    .as_ref()
+                    .cloned()
+                    .map_or_else(|| syn::Member::Unnamed(id.into()), syn::Member::Named)
             })
             .collect::<Vec<_>>();
 
@@ -47,10 +49,12 @@ impl<'a> From<&'a DeriveStruct> for Common<'a> {
             .iter()
             .enumerate()
             .map(|(id, field)| {
-                field.syn.ident.as_ref().cloned().map_or_else(
-                    || syn::Member::Unnamed(id.into()),
-                    |field| syn::Member::Named(field),
-                )
+                field
+                    .syn
+                    .ident
+                    .as_ref()
+                    .cloned()
+                    .map_or_else(|| syn::Member::Unnamed(id.into()), syn::Member::Named)
             })
             .collect::<Vec<_>>();
 
@@ -107,11 +111,9 @@ pub fn expand_field(input: DeriveStruct) -> TokenStream {
                 <#ty as arrow2_convert::field::ArrowField>::data_type()
             )
         } else {
-            let field_names = field_members.iter().map(|field| {
-                match field {
-                    syn::Member::Named(ident) => format_ident!("{}", ident),
-                    syn::Member::Unnamed(index) => format_ident!("field_{}", index),
-                }
+            let field_names = field_members.iter().map(|field| match field {
+                syn::Member::Named(ident) => format_ident!("{}", ident),
+                syn::Member::Unnamed(index) => format_ident!("field_{}", index),
             });
             quote!(arrow2::datatypes::DataType::Struct(vec![
                 #(
