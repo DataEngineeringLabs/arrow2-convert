@@ -5,10 +5,13 @@ use syn::{DeriveInput, Ident, Lit, Meta, MetaNameValue, Visibility};
 
 pub const ARROW_FIELD: &str = "arrow_field";
 pub const FIELD_TYPE: &str = "type";
+pub const FIELD_SKIP: &str = "skip";
 pub const UNION_TYPE: &str = "type";
 pub const UNION_TYPE_SPARSE: &str = "sparse";
 pub const UNION_TYPE_DENSE: &str = "dense";
+pub const TRANSPARENT: &str = "transparent";
 
+#[derive(Debug)]
 pub struct DeriveCommon {
     /// The input name
     pub name: Ident,
@@ -16,33 +19,44 @@ pub struct DeriveCommon {
     pub visibility: Visibility,
 }
 
+#[derive(Debug)]
 pub struct DeriveStruct {
     pub common: DeriveCommon,
     /// The list of fields in the struct
     pub fields: Vec<DeriveField>,
+    pub is_transparent: bool,
 }
 
+#[derive(Debug)]
 pub struct DeriveEnum {
     pub common: DeriveCommon,
     /// The list of variants in the enum
     pub variants: Vec<DeriveVariant>,
     pub is_dense: bool,
 }
+
 /// All container attributes
+#[derive(Debug)]
 pub struct ContainerAttrs {
     pub is_dense: Option<bool>,
+    pub transparent: Option<Span>,
 }
 
 /// All field attributes
+#[derive(Debug)]
 pub struct FieldAttrs {
     pub field_type: Option<syn::Type>,
+    pub skip: bool,
 }
 
+#[derive(Debug)]
 pub struct DeriveField {
     pub syn: syn::Field,
     pub field_type: syn::Type,
+    pub skip: bool,
 }
 
+#[derive(Debug)]
 pub struct DeriveVariant {
     pub syn: syn::Variant,
     pub field_type: syn::Type,
@@ -73,6 +87,7 @@ impl DeriveCommon {
 impl ContainerAttrs {
     pub fn from_ast(attrs: &[syn::Attribute]) -> ContainerAttrs {
         let mut is_dense: Option<bool> = None;
+        let mut is_transparent: Option<Span> = None;
 
         for attr in attrs {
             if let Ok(meta) = attr.parse_meta() {
@@ -85,26 +100,24 @@ impl ContainerAttrs {
                                         lit: Lit::Str(string),
                                         path,
                                         ..
-                                    }) => {
-                                        if path.is_ident(UNION_TYPE) {
-                                            match string.value().as_ref() {
-                                                UNION_TYPE_DENSE => {
-                                                    is_dense = Some(true);
-                                                }
-                                                UNION_TYPE_SPARSE => {
-                                                    is_dense = Some(false);
-                                                }
-                                                _ => {
-                                                    abort!(
-                                                        path.span(),
-                                                        "Unexpected value for mode"
-                                                    );
-                                                }
+                                    }) if path.is_ident(UNION_TYPE) => {
+                                        match string.value().as_ref() {
+                                            UNION_TYPE_DENSE => {
+                                                is_dense = Some(true);
                                             }
-                                        } else {
-                                            abort!(path.span(), "Unexpected attribute");
+                                            UNION_TYPE_SPARSE => {
+                                                is_dense = Some(false);
+                                            }
+                                            _ => {
+                                                abort!(path.span(), "Unexpected value for mode");
+                                            }
                                         }
                                     }
+
+                                    Meta::Path(path) if path.is_ident(TRANSPARENT) => {
+                                        is_transparent = Some(path.span());
+                                    }
+
                                     _ => {
                                         abort!(meta.span(), "Unexpected attribute");
                                     }
@@ -116,13 +129,17 @@ impl ContainerAttrs {
             }
         }
 
-        ContainerAttrs { is_dense }
+        ContainerAttrs {
+            is_dense,
+            transparent: is_transparent,
+        }
     }
 }
 
 impl FieldAttrs {
     pub fn from_ast(input: &[syn::Attribute]) -> FieldAttrs {
         let mut field_type: Option<syn::Type> = None;
+        let mut skip = false;
 
         for attr in input {
             if let Ok(meta) = attr.parse_meta() {
@@ -135,13 +152,11 @@ impl FieldAttrs {
                                         lit: Lit::Str(string),
                                         path,
                                         ..
-                                    }) => {
-                                        if path.is_ident(FIELD_TYPE) {
-                                            field_type = Some(
-                                                syn::parse_str(&string.value()).unwrap_or_abort(),
-                                            );
-                                        }
+                                    }) if path.is_ident(FIELD_TYPE) => {
+                                        field_type =
+                                            Some(syn::parse_str(&string.value()).unwrap_or_abort());
                                     }
+                                    Meta::Path(path) if path.is_ident(FIELD_SKIP) => skip = true,
                                     _ => {
                                         abort!(meta.span(), "Unexpected attribute");
                                     }
@@ -153,7 +168,7 @@ impl FieldAttrs {
             }
         }
 
-        FieldAttrs { field_type }
+        FieldAttrs { field_type, skip }
     }
 }
 
@@ -162,6 +177,15 @@ impl DeriveStruct {
         let container_attrs = ContainerAttrs::from_ast(&input.attrs);
         let common = DeriveCommon::from_ast(input, &container_attrs);
 
+        let is_transparent = if let Some(span) = container_attrs.transparent {
+            if ast.fields.len() > 1 {
+                abort!(span, "'transparent' is only supported on length-1 structs!");
+            }
+            true
+        } else {
+            false
+        };
+
         DeriveStruct {
             common,
             fields: ast
@@ -169,6 +193,7 @@ impl DeriveStruct {
                 .iter()
                 .map(DeriveField::from_ast)
                 .collect::<Vec<_>>(),
+            is_transparent,
         }
     }
 }
@@ -199,6 +224,7 @@ impl DeriveField {
         DeriveField {
             syn: input.clone(),
             field_type: attrs.field_type.unwrap_or_else(|| input.ty.clone()),
+            skip: attrs.skip,
         }
     }
 }
