@@ -87,7 +87,7 @@ fn test_nested_unit_variant() {
 }
 
 // TODO: reenable this test once slices for enums is fixed.
-//#[test]
+#[test]
 #[allow(unused)]
 fn test_slice() {
     #[derive(Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
