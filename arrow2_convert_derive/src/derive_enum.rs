@@ -9,7 +9,6 @@ struct Common<'a> {
     original_name: &'a proc_macro2::Ident,
     original_name_str: String,
     visibility: &'a syn::Visibility,
-    is_dense: bool,
     variants: &'a Vec<DeriveVariant>,
     union_type: TokenStream,
     variant_names: Vec<proc_macro2::Ident>,
@@ -69,7 +68,6 @@ impl<'a> From<&'a DeriveEnum> for Common<'a> {
             original_name,
             original_name_str,
             visibility,
-            is_dense,
             variants,
             union_type,
             variant_names,
@@ -114,7 +112,6 @@ pub fn expand_serialize(input: DeriveEnum) -> TokenStream {
     let Common {
         original_name,
         visibility,
-        is_dense,
         variants,
         variant_names,
         variant_indices,
@@ -123,6 +120,7 @@ pub fn expand_serialize(input: DeriveEnum) -> TokenStream {
     } = (&input).into();
 
     let first_variant = &variant_names[0];
+    let is_dense = input.is_dense;
 
     let mutable_array_name = &input.common.mutable_array_name();
     let mutable_variant_array_types = variant_types
@@ -410,9 +408,7 @@ pub fn expand_deserialize(input: DeriveEnum) -> TokenStream {
         original_name,
         original_name_str,
         visibility,
-        is_dense: _,
         variants,
-        variant_names: _,
         variant_indices,
         variant_types,
         ..
@@ -421,11 +417,8 @@ pub fn expand_deserialize(input: DeriveEnum) -> TokenStream {
     let array_name = &input.common.array_name();
     let iterator_name = &input.common.iterator_name();
 
-    // - For dense unions, return the value of the variant that corresponds to the matched arm. Since
-    //   deserialization is sequential rather than via random access, the offset is not used even
-    //   for dense unions.
-    // - For sparse unions, return the value of the variant that corresponds to the matched arm, and
-    //   consume the iterators of the rest of the variants.
+    // For unit variants, return the variant directly. For non-unit variants, get the slice of the underlying field array
+    // and deserialize to the variant type.
     let iter_next_match_block = {
         let candidates = variants.iter()
                     .zip(&variant_indices)
@@ -442,13 +435,10 @@ pub fn expand_deserialize(input: DeriveEnum) -> TokenStream {
                         else {
                             quote! {
                                 #lit_idx => {
-
-                                    let (_, offset) = self.arr.index(next_index);
-                                    let slice = self.arr.fields()[#lit_idx].slice(offset, 1);
                                     let mut slice_iter = <<#variant_type as arrow2_convert::deserialize::ArrowDeserialize> ::ArrayType as arrow2_convert::deserialize::ArrowArray> ::iter_from_array_ref(slice.deref());
                                     let v = slice_iter
                                         .next()
-                                        .unwrap_or_else(|| panic!("Invalid offset for {}", "TensorData"));
+                                        .unwrap_or_else(|| panic!("Invalid offset for {}", #lit_idx));
                                     Some(<#variant_type as arrow2_convert::deserialize::ArrowDeserialize>::arrow_deserialize(v).map(|v| #original_name::#name(v)))
                                 }
                             }
@@ -475,7 +465,6 @@ pub fn expand_deserialize(input: DeriveEnum) -> TokenStream {
 
                 #iterator_name {
                     arr,
-                    types_iter: arr.types().iter(),
                     index_iter: 0..arr.len(),
                 }
             }
@@ -498,7 +487,6 @@ pub fn expand_deserialize(input: DeriveEnum) -> TokenStream {
         #[allow(non_snake_case)]
         #visibility struct #iterator_name<'a> {
             arr: &'a arrow2::array::UnionArray,
-            types_iter: std::slice::Iter<'a, i8>,
             index_iter: std::ops::Range<usize>,
         }
     };
@@ -513,14 +501,11 @@ pub fn expand_deserialize(input: DeriveEnum) -> TokenStream {
                 let Some(next_index) = self.index_iter.next() else {
                     return None;
                 };
-                match self.types_iter.next() {
-                    Some(type_idx) => {
-                        match type_idx {
-                            #iter_next_match_block
-                            _ => panic!("Invalid type for {}", #original_name_str)
-                        }
-                    }
-                    None => None
+                let (type_idx, offset) = self.arr.index(next_index);
+                let slice = self.arr.fields()[type_idx].slice(offset, 1);
+                match type_idx {
+                    #iter_next_match_block
+                    _ => panic!("Invalid type for {}", #original_name_str)
                 }
             }
         }
