@@ -75,7 +75,6 @@ Default implementations of the above traits are provided for the following:
 Enums are still an experimental feature and need to be integrated tested. Rust enum arrays are converted to a `Arrow::UnionArray`. Some additional notes on enums:
 
 - Rust unit variants are represented using as the `bool` data type.
-- Enum slices currently [don't deserialize correctly](https://github.com/DataEngineeringLabs/arrow2-convert/issues/53).
 
 ### i128
 
