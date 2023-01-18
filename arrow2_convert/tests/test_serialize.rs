@@ -1,4 +1,5 @@
 use arrow2::array::Array;
+use arrow2::buffer::Buffer;
 use arrow2::chunk::Chunk;
 use arrow2_convert::field::{ArrowField, FixedSizeBinary};
 use arrow2_convert::serialize::*;
@@ -67,6 +68,23 @@ fn test_array() {
     let r: Arc<dyn Array> = strs.try_into_arrow().unwrap();
     assert_eq!(r.len(), 1);
     assert_eq!(r.data_type(), &<Vec<u8> as ArrowField>::data_type());
+}
+
+#[test]
+fn test_buffer() {
+    // Buffer<u8> and Vec<u8> should serialize into BinaryArray
+    let dat: Vec<Buffer<u8>> = vec![(0..10).into_iter().collect()];
+    let r: Box<dyn Array> = dat.try_into_arrow().unwrap();
+    assert_eq!(r.len(), 1);
+    assert_eq!(r.data_type(), &<Buffer<u8> as ArrowField>::data_type());
+    assert_eq!(r.data_type(), &<Vec<u8> as ArrowField>::data_type());
+
+    // Buffer<u16> and Vec<u16> should serialize into ListArray
+    let dat: Vec<Buffer<u16>> = vec![(0..10).into_iter().collect()];
+    let r: Box<dyn Array> = dat.try_into_arrow().unwrap();
+    assert_eq!(r.len(), 1);
+    assert_eq!(r.data_type(), &<Buffer<u16> as ArrowField>::data_type());
+    assert_eq!(r.data_type(), &<Vec<u16> as ArrowField>::data_type());
 }
 
 #[test]

@@ -1,6 +1,10 @@
 //! Implementation and traits for mapping rust types to Arrow types
 
-use arrow2::datatypes::{DataType, Field};
+use arrow2::{
+    buffer::Buffer,
+    datatypes::{DataType, Field},
+    types::NativeType,
+};
 use chrono::{NaiveDate, NaiveDateTime};
 
 /// Trait implemented by all types that can be used as an Arrow field.
@@ -169,6 +173,15 @@ impl ArrowField for NaiveDate {
     }
 }
 
+impl ArrowField for Buffer<u8> {
+    type Type = Self;
+
+    #[inline]
+    fn data_type() -> arrow2::datatypes::DataType {
+        arrow2::datatypes::DataType::Binary
+    }
+}
+
 impl ArrowField for Vec<u8> {
     type Type = Self;
 
@@ -199,6 +212,19 @@ impl<const SIZE: usize> ArrowField for FixedSizeBinary<SIZE> {
     #[inline]
     fn data_type() -> arrow2::datatypes::DataType {
         arrow2::datatypes::DataType::FixedSizeBinary(SIZE)
+    }
+}
+
+// Blanket implementation for Buffer
+impl<T> ArrowField for Buffer<T>
+where
+    T: ArrowField + NativeType + ArrowEnableVecForType,
+{
+    type Type = Self;
+
+    #[inline]
+    fn data_type() -> DataType {
+        DataType::List(Box::new(<T as ArrowField>::field("item")))
     }
 }
 
