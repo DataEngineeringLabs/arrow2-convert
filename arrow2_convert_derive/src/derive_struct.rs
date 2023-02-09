@@ -69,7 +69,7 @@ impl<'a> From<&'a DeriveStruct> for Common<'a> {
             .iter()
             .enumerate()
             .map(|(idx, _ident)| {
-                syn::LitInt::new(&format!("{}", idx), proc_macro2::Span::call_site())
+                syn::LitInt::new(&format!("{idx}"), proc_macro2::Span::call_site())
             })
             .collect::<Vec<_>>();
 

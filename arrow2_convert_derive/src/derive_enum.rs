@@ -20,7 +20,7 @@ struct Common<'a> {
 impl<'a> From<&'a DeriveEnum> for Common<'a> {
     fn from(input: &'a DeriveEnum) -> Self {
         let original_name = &input.common.name;
-        let original_name_str = format!("{}", original_name);
+        let original_name_str = format!("{original_name}");
         let visibility = &input.common.visibility;
         let is_dense = input.is_dense;
         let variants = &input.variants;
@@ -45,14 +45,14 @@ impl<'a> From<&'a DeriveEnum> for Common<'a> {
 
         let variant_names_str = variant_names
             .iter()
-            .map(|v| syn::LitStr::new(&format!("{}", v), proc_macro2::Span::call_site()))
+            .map(|v| syn::LitStr::new(&format!("{v}"), proc_macro2::Span::call_site()))
             .collect::<Vec<_>>();
 
         let variant_indices = variant_names
             .iter()
             .enumerate()
             .map(|(idx, _ident)| {
-                syn::LitInt::new(&format!("{}", idx), proc_macro2::Span::call_site())
+                syn::LitInt::new(&format!("{idx}"), proc_macro2::Span::call_site())
             })
             .collect::<Vec<_>>();
 
