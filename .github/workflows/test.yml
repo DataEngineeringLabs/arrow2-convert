@@ -8,6 +8,22 @@ on:
       - main
 
 jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with: 
+          toolchain: stable
+      - name: "build all"
+        # We keep these separate since sometimes the derive fails when
+        # independently built.
+        run: |
+          cargo build -p arrow2_convert_derive
+          cargo build -p arrow2_convert
+          cargo build -p arrow2_convert_example_simple
+
   clippy:
     name: Clippy
     runs-on: ubuntu-latest
