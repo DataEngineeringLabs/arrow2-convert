@@ -11,7 +11,6 @@ pub const UNION_TYPE_SPARSE: &str = "sparse";
 pub const UNION_TYPE_DENSE: &str = "dense";
 pub const TRANSPARENT: &str = "transparent";
 
-#[derive(Debug)]
 pub struct DeriveCommon {
     /// The input name
     pub name: Ident,
@@ -19,7 +18,6 @@ pub struct DeriveCommon {
     pub visibility: Visibility,
 }
 
-#[derive(Debug)]
 pub struct DeriveStruct {
     pub common: DeriveCommon,
     /// The list of fields in the struct
@@ -27,7 +25,6 @@ pub struct DeriveStruct {
     pub is_transparent: bool,
 }
 
-#[derive(Debug)]
 pub struct DeriveEnum {
     pub common: DeriveCommon,
     /// The list of variants in the enum
@@ -36,27 +33,23 @@ pub struct DeriveEnum {
 }
 
 /// All container attributes
-#[derive(Debug)]
 pub struct ContainerAttrs {
     pub is_dense: Option<bool>,
     pub transparent: Option<Span>,
 }
 
 /// All field attributes
-#[derive(Debug)]
 pub struct FieldAttrs {
     pub field_type: Option<syn::Type>,
     pub skip: bool,
 }
 
-#[derive(Debug)]
 pub struct DeriveField {
     pub syn: syn::Field,
     pub field_type: syn::Type,
     pub skip: bool,
 }
 
-#[derive(Debug)]
 pub struct DeriveVariant {
     pub syn: syn::Variant,
     pub field_type: syn::Type,
