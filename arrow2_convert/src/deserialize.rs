@@ -218,7 +218,7 @@ where
 impl<T> ArrowDeserialize for Buffer<T>
 where
     T: ArrowDeserialize + NativeType + ArrowEnableVecForType,
-    for<'b> &'b <T as ArrowDeserialize>::ArrayType: IntoIterator
+    for<'b> &'b <T as ArrowDeserialize>::ArrayType: IntoIterator,
 {
     type ArrayType = ListArray<i32>;
 
