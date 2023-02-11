@@ -1,5 +1,5 @@
-use arrow2::array::*;
 use arrow2::error::Result;
+use arrow2::{array::*, buffer::Buffer};
 use arrow2_convert::{deserialize::*, serialize::*, ArrowDeserialize, ArrowField, ArrowSerialize};
 
 #[test]
@@ -76,4 +76,14 @@ fn test_deserialize_large_types_schema_mismatch_error() {
 
     let result: Result<Vec<S2>> = arr1.try_into_collection();
     assert!(result.is_err());
+}
+
+#[test]
+fn test_deserialize_buffer() {
+    let original_array = [Buffer::from_iter(0u16..5), Buffer::from_iter(7..9)];
+    let b: Box<dyn Array> = original_array.try_into_arrow().unwrap();
+    let iter = arrow_array_deserialize_iterator::<Buffer<u16>>(b.as_ref()).unwrap();
+    for (i, k) in iter.zip(original_array.iter()) {
+        assert_eq!(&i, k);
+    }
 }

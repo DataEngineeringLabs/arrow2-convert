@@ -1,8 +1,9 @@
 //! Implementation and traits for serializing to Arrow.
 
-use arrow2::array::Array;
 use arrow2::array::*;
 use arrow2::chunk::Chunk;
+use arrow2::types::NativeType;
+use arrow2::{array::Array, buffer::Buffer};
 use chrono::{NaiveDate, NaiveDateTime};
 use std::sync::Arc;
 
@@ -178,6 +179,20 @@ impl ArrowSerialize for NaiveDate {
     }
 }
 
+impl ArrowSerialize for Buffer<u8> {
+    type MutableArrayType = MutableBinaryArray<i32>;
+
+    #[inline]
+    fn new_array() -> Self::MutableArrayType {
+        Self::MutableArrayType::default()
+    }
+
+    #[inline]
+    fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+        array.try_push(Some(v.as_slice()))
+    }
+}
+
 impl ArrowSerialize for Vec<u8> {
     type MutableArrayType = MutableBinaryArray<i32>;
 
@@ -223,6 +238,34 @@ impl<const SIZE: usize> ArrowSerialize for FixedSizeBinary<SIZE> {
         array: &mut Self::MutableArrayType,
     ) -> arrow2::error::Result<()> {
         array.try_push(Some(v))
+    }
+}
+
+// Blanket implementation for Buffer
+impl<T> ArrowSerialize for Buffer<T>
+where
+    T: NativeType + ArrowSerialize + ArrowEnableVecForType,
+{
+    type MutableArrayType = MutableListArray<i32, MutablePrimitiveArray<T>>;
+
+    #[inline]
+    fn new_array() -> Self::MutableArrayType {
+        Self::MutableArrayType::new_with_field(
+            MutablePrimitiveArray::new(),
+            "item",
+            <T as ArrowField>::is_nullable(),
+        )
+    }
+
+    #[inline]
+    fn arrow_serialize(
+        v: &<Self as ArrowField>::Type,
+        array: &mut Self::MutableArrayType,
+    ) -> arrow2::error::Result<()> {
+        let values = array.mut_values();
+        values.reserve(v.len());
+        values.extend_from_slice(v.as_slice());
+        array.try_push_valid()
     }
 }
 

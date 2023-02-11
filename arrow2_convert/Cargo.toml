@@ -20,7 +20,15 @@ trybuild = "1.0"
 
 [dev-dependencies]
 arrow2_convert_derive = { version = "0.4.0", path = "../arrow2_convert_derive" }
+criterion = "0.4"
 
 [features]
 default = ["derive"]
 derive = ["arrow2_convert_derive"]
+
+[lib]
+bench = false
+
+[[bench]]
+name = "bench"
+harness = false

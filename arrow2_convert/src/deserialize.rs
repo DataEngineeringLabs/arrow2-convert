@@ -1,6 +1,6 @@
 //! Implementation and traits for deserializing from Arrow.
 
-use arrow2::array::*;
+use arrow2::{array::*, buffer::Buffer, types::NativeType};
 use chrono::{NaiveDate, NaiveDateTime};
 
 use crate::field::*;
@@ -71,6 +71,7 @@ macro_rules! impl_arrow_array {
         impl ArrowArray for $array {
             type BaseArrayType = Self;
 
+            #[inline]
             fn iter_from_array_ref(b: &dyn Array) -> <&Self as IntoIterator>::IntoIter {
                 b.as_any()
                     .downcast_ref::<Self::BaseArrayType>()
@@ -211,6 +212,28 @@ where
         arrow_array_deserialize_iterator_internal::<<T as ArrowField>::Type, T>(t.deref())
             .collect::<Vec<<T as ArrowField>::Type>>()
     })
+}
+
+// Blanket implementation for Buffer
+impl<T> ArrowDeserialize for Buffer<T>
+where
+    T: ArrowDeserialize + NativeType + ArrowEnableVecForType,
+    for<'b> &'b <T as ArrowDeserialize>::ArrayType: IntoIterator,
+{
+    type ArrayType = ListArray<i32>;
+
+    #[inline]
+    fn arrow_deserialize(
+        v: <&Self::ArrayType as IntoIterator>::Item,
+    ) -> Option<<Self as ArrowField>::Type> {
+        v.map(|t| {
+            t.as_any()
+                .downcast_ref::<PrimitiveArray<T>>()
+                .unwrap()
+                .values()
+                .clone()
+        })
+    }
 }
 
 // Blanket implementation for Vec
