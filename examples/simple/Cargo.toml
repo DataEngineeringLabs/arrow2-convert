@@ -7,4 +7,4 @@ edition = "2021"
 
 [dependencies]
 arrow2 = "0.16"
-arrow2_convert = { version = "0.4.0", path = "../../arrow2_convert" }
+arrow2_convert = { version = "0.4.1", path = "../../arrow2_convert" }
