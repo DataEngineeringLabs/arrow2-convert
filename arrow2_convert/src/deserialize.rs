@@ -173,6 +173,15 @@ impl ArrowDeserialize for NaiveDate {
     }
 }
 
+impl ArrowDeserialize for Buffer<u8> {
+    type ArrayType = BinaryArray<i32>;
+
+    #[inline]
+    fn arrow_deserialize(v: Option<&[u8]>) -> Option<Self> {
+        v.map(|t| t.to_vec().into())
+    }
+}
+
 impl ArrowDeserialize for Vec<u8> {
     type ArrayType = BinaryArray<i32>;
 

@@ -79,10 +79,20 @@ fn test_deserialize_large_types_schema_mismatch_error() {
 }
 
 #[test]
-fn test_deserialize_buffer() {
+fn test_deserialize_buffer_u16() {
     let original_array = [Buffer::from_iter(0u16..5), Buffer::from_iter(7..9)];
     let b: Box<dyn Array> = original_array.try_into_arrow().unwrap();
     let iter = arrow_array_deserialize_iterator::<Buffer<u16>>(b.as_ref()).unwrap();
+    for (i, k) in iter.zip(original_array.iter()) {
+        assert_eq!(&i, k);
+    }
+}
+
+#[test]
+fn test_deserialize_buffer_u8() {
+    let original_array = [Buffer::from_iter(0u8..5), Buffer::from_iter(7..9)];
+    let b: Box<dyn Array> = original_array.try_into_arrow().unwrap();
+    let iter = arrow_array_deserialize_iterator::<Buffer<u8>>(b.as_ref()).unwrap();
     for (i, k) in iter.zip(original_array.iter()) {
         assert_eq!(&i, k);
     }

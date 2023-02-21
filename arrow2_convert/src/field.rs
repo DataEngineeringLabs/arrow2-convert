@@ -281,6 +281,7 @@ arrow_enable_vec_for_type!(bool);
 arrow_enable_vec_for_type!(NaiveDateTime);
 arrow_enable_vec_for_type!(NaiveDate);
 arrow_enable_vec_for_type!(Vec<u8>);
+arrow_enable_vec_for_type!(Buffer<u8>);
 arrow_enable_vec_for_type!(LargeBinary);
 impl<const SIZE: usize> ArrowEnableVecForType for FixedSizeBinary<SIZE> {}
 impl<const PRECISION: usize, const SCALE: usize> ArrowEnableVecForType for I128<PRECISION, SCALE> {}
@@ -288,8 +289,9 @@ impl<const PRECISION: usize, const SCALE: usize> ArrowEnableVecForType for I128<
 // Blanket implementation for Vec<Option<T>> if vectors are enabled for T
 impl<T> ArrowEnableVecForType for Option<T> where T: ArrowField + ArrowEnableVecForType {}
 
-// Blanket implementation for Vec<Vec<T>> if vectors are enabled for T
+// Blanket implementation for Vec<Vec<T>> and Vec<Buffer<T>> if vectors or buffers are enabled for T
 impl<T> ArrowEnableVecForType for Vec<T> where T: ArrowField + ArrowEnableVecForType {}
+impl<T> ArrowEnableVecForType for Buffer<T> where T: ArrowField + ArrowEnableVecForType {}
 impl<T> ArrowEnableVecForType for LargeVec<T> where T: ArrowField + ArrowEnableVecForType {}
 impl<T, const SIZE: usize> ArrowEnableVecForType for FixedSizeVec<T, SIZE> where
     T: ArrowField + ArrowEnableVecForType
