@@ -71,7 +71,6 @@ pub fn bench_buffer_deserialize(c: &mut Criterion) {
                 },
                 criterion::BatchSize::SmallInput,
             )
-
         });
         group.bench_with_input(BenchmarkId::new("VecU8", size), size, |b, &size| {
             let data: Box<dyn Array> = [VecU8Struct((0..size as u8).into_iter().collect())]
