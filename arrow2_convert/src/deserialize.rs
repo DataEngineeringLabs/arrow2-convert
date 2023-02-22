@@ -192,9 +192,9 @@ impl<'a> Iterator for BufferBinaryArrayIter<'a> {
                     return Some(None);
                 }
             }
-            let (start,end) = self.array.offsets().start_end(self.index);
+            let (start, end) = self.array.offsets().start_end(self.index);
             self.index += 1;
-            Some(Some(self.array.values().clone().slice(start,end)))
+            Some(Some(self.array.values().clone().slice(start, end)))
         }
     }
 }
@@ -216,14 +216,9 @@ impl ArrowArray for BufferBinaryArray {
     type BaseArrayType = BinaryArray<i32>;
     #[inline]
     fn iter_from_array_ref(a: &dyn Array) -> <&Self as IntoIterator>::IntoIter {
-        let b = a.as_any()
-        .downcast_ref::<Self::BaseArrayType>()
-        .unwrap();
+        let b = a.as_any().downcast_ref::<Self::BaseArrayType>().unwrap();
 
-        BufferBinaryArrayIter{
-            index: 0,
-            array: b
-        }
+        BufferBinaryArrayIter { index: 0, array: b }
     }
 }
 
@@ -276,8 +271,6 @@ where
             .collect::<Vec<<T as ArrowField>::Type>>()
     })
 }
-
-
 
 // Blanket implementation for Buffer
 impl<T> ArrowDeserialize for Buffer<T>
@@ -340,8 +333,6 @@ where
         arrow_deserialize_vec_helper::<T>(v)
     }
 }
-
-
 
 impl_arrow_array!(BooleanArray);
 impl_arrow_array!(Utf8Array<i32>);
