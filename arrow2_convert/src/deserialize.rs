@@ -173,12 +173,66 @@ impl ArrowDeserialize for NaiveDate {
     }
 }
 
+/// Iterator for for [`BufferBinaryArray`]
+pub struct BufferBinaryArrayIter<'a> {
+    index: usize,
+    array: &'a BinaryArray<i32>,
+}
+
+impl<'a> Iterator for BufferBinaryArrayIter<'a> {
+    type Item = Option<Buffer<u8>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.array.len() {
+            None
+        } else {
+            if let Some(validity) = self.array.validity() {
+                if !validity.get_bit(self.index) {
+                    self.index += 1;
+                    return Some(None);
+                }
+            }
+            let (start,end) = self.array.offsets().start_end(self.index);
+            self.index += 1;
+            Some(Some(self.array.values().clone().slice(start,end)))
+        }
+    }
+}
+
+/// Internal `ArrowArray` helper to iterate over a `BinaryArray` while exposing Buffer slices
+pub struct BufferBinaryArray;
+
+impl<'a> IntoIterator for &'a BufferBinaryArray {
+    type Item = Option<Buffer<u8>>;
+
+    type IntoIter = BufferBinaryArrayIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        unimplemented!("Use iter_from_array_ref");
+    }
+}
+
+impl ArrowArray for BufferBinaryArray {
+    type BaseArrayType = BinaryArray<i32>;
+    #[inline]
+    fn iter_from_array_ref(a: &dyn Array) -> <&Self as IntoIterator>::IntoIter {
+        let b = a.as_any()
+        .downcast_ref::<Self::BaseArrayType>()
+        .unwrap();
+
+        BufferBinaryArrayIter{
+            index: 0,
+            array: b
+        }
+    }
+}
+
 impl ArrowDeserialize for Buffer<u8> {
-    type ArrayType = BinaryArray<i32>;
+    type ArrayType = BufferBinaryArray;
 
     #[inline]
-    fn arrow_deserialize(v: Option<&[u8]>) -> Option<Self> {
-        v.map(|t| t.to_vec().into())
+    fn arrow_deserialize(v: Option<Buffer<u8>>) -> Option<Self> {
+        v
     }
 }
 
@@ -222,6 +276,8 @@ where
             .collect::<Vec<<T as ArrowField>::Type>>()
     })
 }
+
+
 
 // Blanket implementation for Buffer
 impl<T> ArrowDeserialize for Buffer<T>
@@ -284,6 +340,8 @@ where
         arrow_deserialize_vec_helper::<T>(v)
     }
 }
+
+
 
 impl_arrow_array!(BooleanArray);
 impl_arrow_array!(Utf8Array<i32>);
