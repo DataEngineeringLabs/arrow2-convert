@@ -96,4 +96,15 @@ fn test_deserialize_buffer_u8() {
     for (i, k) in iter.zip(original_array.iter()) {
         assert_eq!(&i, k);
     }
+
+    let original_array = [
+        Some(Buffer::from_iter(0u8..5)),
+        None,
+        Some(Buffer::from_iter(7..9)),
+    ];
+    let b: Box<dyn Array> = original_array.try_into_arrow().unwrap();
+    let iter = arrow_array_deserialize_iterator::<Option<Buffer<u8>>>(b.as_ref()).unwrap();
+    for (i, k) in iter.zip(original_array.iter()) {
+        assert_eq!(&i, k);
+    }
 }
