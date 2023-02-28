@@ -9,6 +9,7 @@ use arrow2_convert::{
     ArrowDeserialize, ArrowField, ArrowSerialize,
 };
 use std::borrow::Borrow;
+use std::f32::INFINITY;
 use std::sync::Arc;
 
 #[test]
@@ -196,7 +197,7 @@ fn test_primitive_type_vec() {
 
     // `arrow2::types::f16` isn't a native type so we can't just use `as`
     {
-        let original_array: Vec<arrow2::types::f16> = vec![1., 2., 3.]
+        let original_array: Vec<arrow2::types::f16> = vec![1.0, 2.5, 47800.0, 0.000012, -0.0, 0.0, INFINITY]
             .iter()
             .map(|f| arrow2::types::f16::from_f32(*f))
             .collect();
