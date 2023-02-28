@@ -194,6 +194,33 @@ fn test_primitive_type_vec() {
     test_float_type!(f32);
     test_float_type!(f64);
 
+    // `arrow2::types::f16` isn't a native type so we can't just use `as`
+    {
+        let original_array: Vec<arrow2::types::f16> = vec![1., 2., 3.]
+            .iter()
+            .map(|f| arrow2::types::f16::from_f32(*f))
+            .collect();
+        let b: Box<dyn Array> = original_array.try_into_arrow().unwrap();
+        let round_trip: Vec<arrow2::types::f16> = b.try_into_collection().unwrap();
+        assert_eq!(original_array, round_trip);
+
+        let original_array: Vec<Option<arrow2::types::f16>> = vec![Some(1.), None, Some(3.)]
+            .iter()
+            .map(|f| f.map(arrow2::types::f16::from_f32))
+            .collect();
+        let b: Box<dyn Array> = original_array.try_into_arrow().unwrap();
+        let round_trip: Vec<Option<arrow2::types::f16>> = b.try_into_collection().unwrap();
+        assert_eq!(original_array, round_trip);
+
+        let original_array: Vec<Option<arrow2::types::f16>> = vec![Some(1.), None, Some(3.)]
+            .iter()
+            .map(|f| f.map(arrow2::types::f16::from_f32))
+            .collect();
+        let b: Arc<dyn Array> = original_array.try_into_arrow().unwrap();
+        let round_trip: Vec<Option<arrow2::types::f16>> = b.try_into_collection().unwrap();
+        assert_eq!(original_array, round_trip);
+    };
+
     // i128
     // i128 is special since we need to require precision and scale so the TryIntoArrow trait
     // is not implemented for Vec<i128>.

@@ -110,6 +110,7 @@ impl_numeric_type_full!(i8, Int8);
 impl_numeric_type_full!(i16, Int16);
 impl_numeric_type_full!(i32, Int32);
 impl_numeric_type_full!(i64, Int64);
+impl_numeric_type_full!(arrow2::types::f16, Float16);
 impl_numeric_type_full!(f32, Float32);
 impl_numeric_type_full!(f64, Float64);
 

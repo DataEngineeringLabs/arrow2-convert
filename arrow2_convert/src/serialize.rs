@@ -86,6 +86,7 @@ impl_numeric_type!(i8);
 impl_numeric_type!(i16);
 impl_numeric_type!(i32);
 impl_numeric_type!(i64);
+impl_numeric_type!(arrow2::types::f16);
 impl_numeric_type!(f32);
 impl_numeric_type!(f64);
 
