@@ -197,10 +197,11 @@ fn test_primitive_type_vec() {
 
     // `arrow2::types::f16` isn't a native type so we can't just use `as`
     {
-        let original_array: Vec<arrow2::types::f16> = vec![1.0, 2.5, 47800.0, 0.000012, -0.0, 0.0, INFINITY]
-            .iter()
-            .map(|f| arrow2::types::f16::from_f32(*f))
-            .collect();
+        let original_array: Vec<arrow2::types::f16> =
+            vec![1.0, 2.5, 47800.0, 0.000012, -0.0, 0.0, INFINITY]
+                .iter()
+                .map(|f| arrow2::types::f16::from_f32(*f))
+                .collect();
         let b: Box<dyn Array> = original_array.try_into_arrow().unwrap();
         let round_trip: Vec<arrow2::types::f16> = b.try_into_collection().unwrap();
         assert_eq!(original_array, round_trip);
