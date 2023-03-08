@@ -53,6 +53,8 @@ pub struct Root {
     // fixed size vec
     #[arrow_field(type = "arrow2_convert::field::FixedSizeVec<i64, 3>")]
     fixed_size_vec: Vec<i64>,
+    utf8scalar_i32: arrow2::scalar::Utf8Scalar<i32>,
+    utf8scalar_i64: arrow2::scalar::Utf8Scalar<i64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, ArrowField, ArrowSerialize, ArrowDeserialize)]
@@ -160,6 +162,8 @@ fn item1() -> Root {
         large_string: "abcdefg".to_string(),
         large_vec: vec![1, 2, 3, 4],
         fixed_size_vec: vec![10, 20, 30],
+        utf8scalar_i32: arrow2::scalar::Utf8Scalar::new(Some("utf8-string")),
+        utf8scalar_i64: arrow2::scalar::Utf8Scalar::new(Some("utf8-string")),
     }
 }
 
@@ -206,6 +210,8 @@ fn item2() -> Root {
         large_string: "abdefag".to_string(),
         large_vec: vec![5, 4, 3, 2],
         fixed_size_vec: vec![11, 21, 32],
+        utf8scalar_i32: arrow2::scalar::Utf8Scalar::new(Some("utf8-string-again")),
+        utf8scalar_i64: arrow2::scalar::Utf8Scalar::new(Some("utf8-string-again")),
     }
 }
 
@@ -222,7 +228,7 @@ fn test_round_trip() -> arrow2::error::Result<()> {
     assert_eq!(struct_array.len(), 2);
 
     let values = struct_array.values();
-    assert_eq!(values.len(), 21);
+    assert_eq!(values.len(), 23);
     assert_eq!(struct_array.len(), 2);
 
     // can iterate one struct at a time without collecting

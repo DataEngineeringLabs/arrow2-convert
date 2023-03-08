@@ -134,6 +134,24 @@ impl ArrowField for String {
     }
 }
 
+impl ArrowField for arrow2::scalar::Utf8Scalar<i32> {
+    type Type = arrow2::scalar::Utf8Scalar<i32>;
+
+    #[inline]
+    fn data_type() -> arrow2::datatypes::DataType {
+        arrow2::datatypes::DataType::Utf8
+    }
+}
+
+impl ArrowField for arrow2::scalar::Utf8Scalar<i64> {
+    type Type = arrow2::scalar::Utf8Scalar<i64>;
+
+    #[inline]
+    fn data_type() -> arrow2::datatypes::DataType {
+        arrow2::datatypes::DataType::LargeUtf8
+    }
+}
+
 /// Represents the `LargeUtf8` Arrow type
 pub struct LargeString {}
 

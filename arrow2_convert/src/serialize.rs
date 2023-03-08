@@ -134,6 +134,34 @@ impl ArrowSerialize for LargeString {
     }
 }
 
+impl ArrowSerialize for arrow2::scalar::Utf8Scalar<i32> {
+    type MutableArrayType = MutableUtf8Array<i32>;
+
+    #[inline]
+    fn new_array() -> Self::MutableArrayType {
+        Self::MutableArrayType::default()
+    }
+
+    #[inline]
+    fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+        array.try_push(v.value())
+    }
+}
+
+impl ArrowSerialize for arrow2::scalar::Utf8Scalar<i64> {
+    type MutableArrayType = MutableUtf8Array<i64>;
+
+    #[inline]
+    fn new_array() -> Self::MutableArrayType {
+        Self::MutableArrayType::default()
+    }
+
+    #[inline]
+    fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+        array.try_push(v.value())
+    }
+}
+
 impl ArrowSerialize for bool {
     type MutableArrayType = MutableBooleanArray;
 

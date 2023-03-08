@@ -146,6 +146,24 @@ impl ArrowDeserialize for LargeString {
     }
 }
 
+impl ArrowDeserialize for arrow2::scalar::Utf8Scalar<i32> {
+    type ArrayType = Utf8Array<i32>;
+
+    #[inline]
+    fn arrow_deserialize(v: Option<&str>) -> Option<Self> {
+        Some(arrow2::scalar::Utf8Scalar::new(v))
+    }
+}
+
+impl ArrowDeserialize for arrow2::scalar::Utf8Scalar<i64> {
+    type ArrayType = Utf8Array<i64>;
+
+    #[inline]
+    fn arrow_deserialize(v: Option<&str>) -> Option<Self> {
+        Some(arrow2::scalar::Utf8Scalar::new(v))
+    }
+}
+
 impl ArrowDeserialize for bool {
     type ArrayType = BooleanArray;
 
