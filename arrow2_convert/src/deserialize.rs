@@ -173,6 +173,64 @@ impl ArrowDeserialize for NaiveDate {
     }
 }
 
+/// Iterator for for [`BufferBinaryArray`]
+pub struct BufferBinaryArrayIter<'a> {
+    index: usize,
+    array: &'a BinaryArray<i32>,
+}
+
+impl<'a> Iterator for BufferBinaryArrayIter<'a> {
+    type Item = Option<Buffer<u8>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.array.len() {
+            None
+        } else {
+            if let Some(validity) = self.array.validity() {
+                if !validity.get_bit(self.index) {
+                    self.index += 1;
+                    return Some(None);
+                }
+            }
+            let (start, end) = self.array.offsets().start_end(self.index);
+            self.index += 1;
+            Some(Some(self.array.values().clone().slice(start, end - start)))
+        }
+    }
+}
+
+/// Internal `ArrowArray` helper to iterate over a `BinaryArray` while exposing Buffer slices
+pub struct BufferBinaryArray;
+
+impl<'a> IntoIterator for &'a BufferBinaryArray {
+    type Item = Option<Buffer<u8>>;
+
+    type IntoIter = BufferBinaryArrayIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        unimplemented!("Use iter_from_array_ref");
+    }
+}
+
+impl ArrowArray for BufferBinaryArray {
+    type BaseArrayType = BinaryArray<i32>;
+    #[inline]
+    fn iter_from_array_ref(a: &dyn Array) -> <&Self as IntoIterator>::IntoIter {
+        let b = a.as_any().downcast_ref::<Self::BaseArrayType>().unwrap();
+
+        BufferBinaryArrayIter { index: 0, array: b }
+    }
+}
+
+impl ArrowDeserialize for Buffer<u8> {
+    type ArrayType = BufferBinaryArray;
+
+    #[inline]
+    fn arrow_deserialize(v: Option<Buffer<u8>>) -> Option<Self> {
+        v
+    }
+}
+
 impl ArrowDeserialize for Vec<u8> {
     type ArrayType = BinaryArray<i32>;
 
