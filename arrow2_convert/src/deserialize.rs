@@ -114,6 +114,7 @@ impl_arrow_deserialize_primitive!(i8);
 impl_arrow_deserialize_primitive!(i16);
 impl_arrow_deserialize_primitive!(i32);
 impl_arrow_deserialize_primitive!(i64);
+impl_arrow_deserialize_primitive!(arrow2::types::f16);
 impl_arrow_deserialize_primitive!(f32);
 impl_arrow_deserialize_primitive!(f64);
 
