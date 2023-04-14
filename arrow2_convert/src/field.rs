@@ -1,5 +1,7 @@
 //! Implementation and traits for mapping rust types to Arrow types
 
+use std::sync::Arc;
+
 use arrow2::{
     buffer::Buffer,
     datatypes::{DataType, Field},
@@ -225,7 +227,7 @@ where
 
     #[inline]
     fn data_type() -> DataType {
-        DataType::List(Box::new(<T as ArrowField>::field("item")))
+        DataType::List(Arc::new(<T as ArrowField>::field("item")))
     }
 }
 
@@ -238,7 +240,7 @@ where
 
     #[inline]
     fn data_type() -> arrow2::datatypes::DataType {
-        arrow2::datatypes::DataType::List(Box::new(<T as ArrowField>::field("item")))
+        arrow2::datatypes::DataType::List(Arc::new(<T as ArrowField>::field("item")))
     }
 }
 
@@ -255,7 +257,7 @@ where
 
     #[inline]
     fn data_type() -> arrow2::datatypes::DataType {
-        arrow2::datatypes::DataType::LargeList(Box::new(<T as ArrowField>::field("item")))
+        arrow2::datatypes::DataType::LargeList(Arc::new(<T as ArrowField>::field("item")))
     }
 }
 
@@ -272,7 +274,7 @@ where
 
     #[inline]
     fn data_type() -> arrow2::datatypes::DataType {
-        arrow2::datatypes::DataType::FixedSizeList(Box::new(<T as ArrowField>::field("item")), SIZE)
+        arrow2::datatypes::DataType::FixedSizeList(Arc::new(<T as ArrowField>::field("item")), SIZE)
     }
 }
 

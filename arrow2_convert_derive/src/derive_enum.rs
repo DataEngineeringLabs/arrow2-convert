@@ -93,11 +93,11 @@ pub fn expand_field(input: DeriveEnum) -> TokenStream {
 
             fn data_type() -> arrow2::datatypes::DataType {
                 arrow2::datatypes::DataType::Union(
-                    vec![
+                    std::sync::Arc::new(vec![
                         #(
                             <#variant_types as arrow2_convert::field::ArrowField>::field(#variant_names_str),
                         )*
-                    ],
+                    ]),
                     None,
                     #union_type,
                 )

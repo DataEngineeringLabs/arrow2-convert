@@ -98,7 +98,7 @@ fn test_field_serialize_error() {
         fn data_type() -> arrow2::datatypes::DataType {
             arrow2::datatypes::DataType::Extension(
                 "custom".to_string(),
-                Box::new(arrow2::datatypes::DataType::UInt64),
+                Arc::new(arrow2::datatypes::DataType::UInt64),
                 None,
             )
         }

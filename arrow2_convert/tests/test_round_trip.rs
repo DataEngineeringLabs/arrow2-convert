@@ -60,7 +60,7 @@ fn test_large_string_nested() {
     let b: Box<dyn Array> = strs.try_into_arrow_as_type::<Vec<LargeString>>().unwrap();
     assert_eq!(
         b.data_type(),
-        &DataType::List(Box::new(Field::new("item", DataType::LargeUtf8, false)))
+        &DataType::List(Arc::new(Field::new("item", DataType::LargeUtf8, false)))
     );
     let round_trip: Vec<Vec<String>> = b.try_into_collection_as_type::<Vec<LargeString>>().unwrap();
     assert_eq!(round_trip, strs);
@@ -81,7 +81,7 @@ fn test_large_binary_nested() {
     let b: Box<dyn Array> = strs.try_into_arrow_as_type::<Vec<LargeBinary>>().unwrap();
     assert_eq!(
         b.data_type(),
-        &DataType::List(Box::new(Field::new("item", DataType::LargeBinary, false)))
+        &DataType::List(Arc::new(Field::new("item", DataType::LargeBinary, false)))
     );
     let round_trip: Vec<Vec<Vec<u8>>> =
         b.try_into_collection_as_type::<Vec<LargeBinary>>().unwrap();
@@ -105,7 +105,7 @@ fn test_large_vec() {
     let b: Box<dyn Array> = ints.try_into_arrow_as_type::<LargeVec<i32>>().unwrap();
     assert_eq!(
         b.data_type(),
-        &DataType::LargeList(Box::new(Field::new("item", DataType::Int32, false)))
+        &DataType::LargeList(Arc::new(Field::new("item", DataType::Int32, false)))
     );
     let round_trip: Vec<Vec<i32>> = b.try_into_collection_as_type::<LargeVec<i32>>().unwrap();
     assert_eq!(round_trip, ints);
@@ -119,7 +119,7 @@ fn test_large_vec_nested() {
         .unwrap();
     assert_eq!(
         b.data_type(),
-        &DataType::LargeList(Box::new(Field::new("item", DataType::LargeBinary, false)))
+        &DataType::LargeList(Arc::new(Field::new("item", DataType::LargeBinary, false)))
     );
     let round_trip: Vec<Vec<Vec<u8>>> = b
         .try_into_collection_as_type::<LargeVec<LargeBinary>>()
@@ -135,7 +135,7 @@ fn test_fixed_size_vec() {
         .unwrap();
     assert_eq!(
         b.data_type(),
-        &DataType::FixedSizeList(Box::new(Field::new("item", DataType::Int32, false)), 3)
+        &DataType::FixedSizeList(Arc::new(Field::new("item", DataType::Int32, false)), 3)
     );
     let round_trip: Vec<Vec<i32>> = b
         .try_into_collection_as_type::<FixedSizeVec<i32, 3>>()

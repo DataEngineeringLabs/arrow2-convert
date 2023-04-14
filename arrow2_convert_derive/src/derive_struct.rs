@@ -115,11 +115,13 @@ pub fn expand_field(input: DeriveStruct) -> TokenStream {
                 syn::Member::Named(ident) => format_ident!("{}", ident),
                 syn::Member::Unnamed(index) => format_ident!("field_{}", index),
             });
-            quote!(arrow2::datatypes::DataType::Struct(vec![
-                #(
-                    <#field_types as arrow2_convert::field::ArrowField>::field(stringify!(#field_names)),
-                )*
-            ]))
+            quote!(arrow2::datatypes::DataType::Struct(std::sync::Arc::new(
+                vec![
+                    #(
+                        <#field_types as arrow2_convert::field::ArrowField>::field(stringify!(#field_names)),
+                    )*
+                ]
+            )))
         }
     };
 
