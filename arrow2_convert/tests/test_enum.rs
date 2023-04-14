@@ -125,7 +125,7 @@ fn test_slice() {
     let b: Box<dyn Array> = enums.try_into_arrow().unwrap();
 
     for i in 0..enums.len() {
-        let arrow_slice = b.slice(i, enums.len() - i);
+        let arrow_slice = b.sliced(i, enums.len() - i);
         let original_slice = &enums[i..enums.len()];
         let round_trip: Vec<TestEnum> = arrow_slice.try_into_collection().unwrap();
         assert_eq!(round_trip, original_slice);

@@ -46,7 +46,7 @@ fn test_slice() {
     let b: Box<dyn Array> = original.try_into_arrow().unwrap();
 
     for i in 0..original.len() {
-        let arrow_slice = b.slice(i, original.len() - i);
+        let arrow_slice = b.sliced(i, original.len() - i);
         let original_slice = &original[i..original.len()];
         let round_trip: Vec<T> = arrow_slice.try_into_collection().unwrap();
         assert_eq!(round_trip, original_slice);
@@ -84,7 +84,7 @@ fn test_nested_slice() {
     let b: Box<dyn Array> = original.try_into_arrow().unwrap();
 
     for i in 0..original.len() {
-        let arrow_slice = b.slice(i, original.len() - i);
+        let arrow_slice = b.sliced(i, original.len() - i);
         let original_slice = &original[i..original.len()];
         let round_trip: Vec<Top> = arrow_slice.try_into_collection().unwrap();
         assert_eq!(round_trip, original_slice);

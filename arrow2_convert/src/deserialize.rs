@@ -195,7 +195,8 @@ impl<'a> Iterator for BufferBinaryArrayIter<'a> {
             }
             let (start, end) = self.array.offsets().start_end(self.index);
             self.index += 1;
-            Some(Some(self.array.values().clone().slice(start, end - start)))
+
+            Some(Some(self.array.values().clone().sliced(start, end - start)))
         }
     }
 }
