@@ -313,7 +313,7 @@ pub fn expand_serialize(input: DeriveEnum) -> TokenStream {
             }
 
             fn len(&self) -> usize {
-                self.#first_variant.len()
+                self.types.len()
             }
 
             fn validity(&self) -> Option<&arrow2::bitmap::MutableBitmap> {
