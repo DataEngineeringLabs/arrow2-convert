@@ -62,12 +62,22 @@ fn test_nested_unit_variant() {
         VAL2(i32),
         VAL3(f64),
         VAL4(TestStruct),
-        VAL5(ChildEnum),
+        VAL5(DenseChildEnum),
+        VAL6(SparseChildEnum),
+    }
+
+    #[derive(Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
+    #[arrow_field(type = "dense")]
+    enum DenseChildEnum {
+        VAL1,
+        VAL2(i32),
+        VAL3(f64),
+        VAL4(TestStruct),
     }
 
     #[derive(Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
     #[arrow_field(type = "sparse")]
-    enum ChildEnum {
+    enum SparseChildEnum {
         VAL1,
         VAL2(i32),
         VAL3(f64),
@@ -79,6 +89,8 @@ fn test_nested_unit_variant() {
         TestEnum::VAL2(2),
         TestEnum::VAL3(1.2),
         TestEnum::VAL4(TestStruct { a1: 10 }),
+        TestEnum::VAL5(DenseChildEnum::VAL4(TestStruct{a1: 42})),
+        TestEnum::VAL6(SparseChildEnum::VAL4(TestStruct{a1: 42}))
     ];
 
     let b: Box<dyn Array> = enums.try_into_arrow().unwrap();
