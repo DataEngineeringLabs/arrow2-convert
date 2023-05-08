@@ -57,7 +57,18 @@ fn test_nested_unit_variant() {
 
     #[derive(Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
     #[arrow_field(type = "dense")]
-    enum TestEnum {
+    enum TestDenseEnum {
+        VAL1,
+        VAL2(i32),
+        VAL3(f64),
+        VAL4(TestStruct),
+        VAL5(DenseChildEnum),
+        VAL6(SparseChildEnum),
+    }
+
+    #[derive(Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
+    #[arrow_field(type = "sparse")]
+    enum TestSparseEnum {
         VAL1,
         VAL2(i32),
         VAL3(f64),
@@ -85,16 +96,29 @@ fn test_nested_unit_variant() {
     }
 
     let enums = vec![
-        TestEnum::VAL1,
-        TestEnum::VAL2(2),
-        TestEnum::VAL3(1.2),
-        TestEnum::VAL4(TestStruct { a1: 10 }),
-        TestEnum::VAL5(DenseChildEnum::VAL4(TestStruct { a1: 42 })),
-        TestEnum::VAL6(SparseChildEnum::VAL4(TestStruct { a1: 42 })),
+        TestDenseEnum::VAL1,
+        TestDenseEnum::VAL2(2),
+        TestDenseEnum::VAL3(1.2),
+        TestDenseEnum::VAL4(TestStruct { a1: 10 }),
+        TestDenseEnum::VAL5(DenseChildEnum::VAL4(TestStruct { a1: 17 })),
+        TestDenseEnum::VAL6(SparseChildEnum::VAL4(TestStruct { a1: 42 })),
     ];
 
     let b: Box<dyn Array> = enums.try_into_arrow().unwrap();
-    let round_trip: Vec<TestEnum> = b.try_into_collection().unwrap();
+    let round_trip: Vec<TestDenseEnum> = b.try_into_collection().unwrap();
+    assert_eq!(round_trip, enums);
+
+    let enums = vec![
+        TestSparseEnum::VAL1,
+        TestSparseEnum::VAL2(2),
+        TestSparseEnum::VAL3(1.2),
+        TestSparseEnum::VAL4(TestStruct { a1: 10 }),
+        TestSparseEnum::VAL5(DenseChildEnum::VAL4(TestStruct { a1: 17 })),
+        TestSparseEnum::VAL6(SparseChildEnum::VAL4(TestStruct { a1: 42 })),
+    ];
+
+    let b: Box<dyn Array> = enums.try_into_arrow().unwrap();
+    let round_trip: Vec<TestSparseEnum> = b.try_into_collection().unwrap();
     assert_eq!(round_trip, enums);
 }
 
