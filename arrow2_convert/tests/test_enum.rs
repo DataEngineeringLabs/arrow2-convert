@@ -89,8 +89,8 @@ fn test_nested_unit_variant() {
         TestEnum::VAL2(2),
         TestEnum::VAL3(1.2),
         TestEnum::VAL4(TestStruct { a1: 10 }),
-        TestEnum::VAL5(DenseChildEnum::VAL4(TestStruct{a1: 42})),
-        TestEnum::VAL6(SparseChildEnum::VAL4(TestStruct{a1: 42}))
+        TestEnum::VAL5(DenseChildEnum::VAL4(TestStruct { a1: 42 })),
+        TestEnum::VAL6(SparseChildEnum::VAL4(TestStruct { a1: 42 })),
     ];
 
     let b: Box<dyn Array> = enums.try_into_arrow().unwrap();
