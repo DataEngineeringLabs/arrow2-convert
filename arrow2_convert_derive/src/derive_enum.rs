@@ -93,11 +93,11 @@ pub fn expand_field(input: DeriveEnum) -> TokenStream {
 
             fn data_type() -> arrow2::datatypes::DataType {
                 arrow2::datatypes::DataType::Union(
-                    vec![
+                    std::sync::Arc::new(vec![
                         #(
                             <#variant_types as arrow2_convert::field::ArrowField>::field(#variant_names_str),
                         )*
-                    ],
+                    ]),
                     None,
                     #union_type,
                 )
@@ -502,7 +502,7 @@ pub fn expand_deserialize(input: DeriveEnum) -> TokenStream {
                     return None;
                 };
                 let (type_idx, offset) = self.arr.index(next_index);
-                let slice = self.arr.fields()[type_idx].slice(offset, 1);
+                let slice = self.arr.fields()[type_idx].sliced(offset, 1);
                 match type_idx {
                     #iter_next_match_block
                     _ => panic!("Invalid type for {}", #original_name_str)

@@ -4,3 +4,6 @@ members = [
     "arrow2_convert_derive",
     "examples/simple"
 ]
+
+[patch.crates-io]
+arrow2 = { git = "https://github.com/rerun-io/arrow2", branch = "cmc/arc_datatype" }

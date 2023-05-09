@@ -7,6 +7,7 @@ use arrow2_convert::serialize::TryIntoArrow;
 /// - Custom types
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 use std::borrow::Borrow;
+use std::sync::Arc;
 
 #[derive(Debug, Clone, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct Root {
@@ -85,7 +86,7 @@ impl arrow2_convert::field::ArrowField for CustomType {
     fn data_type() -> arrow2::datatypes::DataType {
         arrow2::datatypes::DataType::Extension(
             "custom".to_string(),
-            Box::new(arrow2::datatypes::DataType::UInt64),
+            Arc::new(arrow2::datatypes::DataType::UInt64),
             None,
         )
     }
