@@ -119,7 +119,6 @@ pub fn expand_serialize(input: DeriveEnum) -> TokenStream {
         ..
     } = (&input).into();
 
-    let first_variant = &variant_names[0];
     let is_dense = input.is_dense;
 
     let mutable_array_name = &input.common.mutable_array_name();
@@ -227,6 +226,7 @@ pub fn expand_serialize(input: DeriveEnum) -> TokenStream {
         let first_name = &variant_names[0];
         quote! {
             self.types.push(0);
+            self.offsets.push((self.#first_name.len()) as i32);
             <#first_array_type as MutableArray>::push_null(&mut self.#first_name);
         }
     } else {
@@ -313,7 +313,7 @@ pub fn expand_serialize(input: DeriveEnum) -> TokenStream {
             }
 
             fn len(&self) -> usize {
-                self.#first_variant.len()
+                self.types.len()
             }
 
             fn validity(&self) -> Option<&arrow2::bitmap::MutableBitmap> {
