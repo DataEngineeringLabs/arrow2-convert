@@ -1,13 +1,12 @@
 //! Implementation and traits for serializing to Arrow.
 
+use crate::field::*;
 use arrow2::array::*;
 use arrow2::chunk::Chunk;
 use arrow2::types::NativeType;
 use arrow2::{array::Array, buffer::Buffer};
-use chrono::{NaiveDate, NaiveDateTime};
+use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 use std::sync::Arc;
-
-use crate::field::*;
 
 /// Trait that is implemented by all types that are serializable to Arrow.
 ///
@@ -177,6 +176,20 @@ impl ArrowSerialize for NaiveDate {
             chrono::Datelike::num_days_from_ce(v)
                 - arrow2::temporal_conversions::EPOCH_DAYS_FROM_CE,
         ))
+    }
+}
+
+impl ArrowSerialize for NaiveTime {
+    type MutableArrayType = MutablePrimitiveArray<i32>;
+
+    #[inline]
+    fn new_array() -> Self::MutableArrayType {
+        Self::MutableArrayType::from(<Self as ArrowField>::data_type())
+    }
+
+    #[inline]
+    fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+        array.try_push(Some(chrono::Timelike::num_seconds_from_midnight(v) as i32))
     }
 }
 

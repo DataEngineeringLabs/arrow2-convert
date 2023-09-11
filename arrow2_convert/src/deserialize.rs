@@ -1,7 +1,7 @@
 //! Implementation and traits for deserializing from Arrow.
 
 use arrow2::{array::*, buffer::Buffer, types::NativeType};
-use chrono::{NaiveDate, NaiveDateTime};
+use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 
 use crate::field::*;
 
@@ -171,6 +171,15 @@ impl ArrowDeserialize for NaiveDate {
     #[inline]
     fn arrow_deserialize(v: Option<&i32>) -> Option<Self> {
         v.map(|t| arrow2::temporal_conversions::date32_to_date(*t))
+    }
+}
+
+impl ArrowDeserialize for NaiveTime {
+    type ArrayType = PrimitiveArray<i32>;
+
+    #[inline]
+    fn arrow_deserialize(v: Option<&i32>) -> Option<Self> {
+        v.map(|t| arrow2::temporal_conversions::time32s_to_time(*t))
     }
 }
 

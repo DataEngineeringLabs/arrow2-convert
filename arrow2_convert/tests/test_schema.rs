@@ -14,13 +14,15 @@ fn test_schema_types() {
         a3: Option<Vec<u8>>,
         // date32
         a4: chrono::NaiveDate,
+        // time32
+        a5: chrono::NaiveTime,
         // timestamp(ns, None)
-        a5: chrono::NaiveDateTime,
+        a6: chrono::NaiveDateTime,
         // timestamp(ns, None)
-        a6: Option<chrono::NaiveDateTime>,
+        a7: Option<chrono::NaiveDateTime>,
         // i128(precision, scale)
         #[arrow_field(type = "arrow2_convert::field::I128<32, 32>")]
-        a7: i128,
+        a8: i128,
         // array of date times
         date_time_list: Vec<chrono::NaiveDateTime>,
         // optional list array of optional strings
@@ -125,9 +127,10 @@ fn test_schema_types() {
             Field::new("a2", DataType::Int64, false),
             Field::new("a3", DataType::Binary, true),
             Field::new("a4", DataType::Date32, false),
-            Field::new("a5", DataType::Timestamp(TimeUnit::Nanosecond, None), false),
-            Field::new("a6", DataType::Timestamp(TimeUnit::Nanosecond, None), true),
-            Field::new("a7", DataType::Decimal(32, 32), false),
+            Field::new("a5", DataType::Time32(TimeUnit::Second), false),
+            Field::new("a6", DataType::Timestamp(TimeUnit::Nanosecond, None), false),
+            Field::new("a7", DataType::Timestamp(TimeUnit::Nanosecond, None), true),
+            Field::new("a8", DataType::Decimal(32, 32), false),
             Field::new(
                 "date_time_list",
                 DataType::List(Box::new(Field::new(
