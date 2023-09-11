@@ -18,10 +18,12 @@ pub struct Root {
     a3: Option<Vec<u8>>,
     // date32
     a4: chrono::NaiveDate,
+    // time32
+    a5: chrono::NaiveTime,
     // timestamp(ns, None)
-    a5: chrono::NaiveDateTime,
+    a6: chrono::NaiveDateTime,
     // timestamp(ns, None)
-    a6: Option<chrono::NaiveDateTime>,
+    a7: Option<chrono::NaiveDateTime>,
     // array of date times
     date_time_list: Vec<chrono::NaiveDateTime>,
     // optional list array of optional strings
@@ -118,7 +120,7 @@ impl arrow2_convert::deserialize::ArrowDeserialize for CustomType {
 arrow2_convert::arrow_enable_vec_for_type!(CustomType);
 
 fn item1() -> Root {
-    use chrono::{NaiveDate, NaiveDateTime};
+    use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 
     Root {
         name: Some("a".to_string()),
@@ -127,8 +129,9 @@ fn item1() -> Root {
         a2: 1,
         a3: Some(b"aa".to_vec()),
         a4: NaiveDate::from_ymd_opt(1970, 1, 2).unwrap(),
-        a5: NaiveDateTime::from_timestamp_opt(10000, 0).unwrap(),
-        a6: Some(NaiveDateTime::from_timestamp_opt(10001, 0)).unwrap(),
+        a5: NaiveTime::from_num_seconds_from_midnight_opt(86340, 0).unwrap(),
+        a6: NaiveDateTime::from_timestamp_opt(10000, 0).unwrap(),
+        a7: Some(NaiveDateTime::from_timestamp_opt(10001, 0)).unwrap(),
         date_time_list: vec![
             NaiveDateTime::from_timestamp_opt(10000, 10).unwrap(),
             NaiveDateTime::from_timestamp_opt(10000, 11).unwrap(),
@@ -164,7 +167,7 @@ fn item1() -> Root {
 }
 
 fn item2() -> Root {
-    use chrono::{NaiveDate, NaiveDateTime};
+    use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 
     Root {
         name: Some("b".to_string()),
@@ -173,8 +176,9 @@ fn item2() -> Root {
         a2: 1,
         a3: Some(b"aa".to_vec()),
         a4: NaiveDate::from_ymd_opt(1970, 1, 2).unwrap(),
-        a5: NaiveDateTime::from_timestamp_opt(10000, 0).unwrap(),
-        a6: None,
+        a5: NaiveTime::from_num_seconds_from_midnight_opt(60, 0).unwrap(),
+        a6: NaiveDateTime::from_timestamp_opt(10000, 0).unwrap(),
+        a7: None,
         date_time_list: vec![
             NaiveDateTime::from_timestamp_opt(10000, 10).unwrap(),
             NaiveDateTime::from_timestamp_opt(10000, 11).unwrap(),
@@ -222,7 +226,7 @@ fn test_round_trip() -> arrow2::error::Result<()> {
     assert_eq!(struct_array.len(), 2);
 
     let values = struct_array.values();
-    assert_eq!(values.len(), 21);
+    assert_eq!(values.len(), 22);
     assert_eq!(struct_array.len(), 2);
 
     // can iterate one struct at a time without collecting

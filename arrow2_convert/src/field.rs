@@ -2,17 +2,17 @@
 
 use arrow2::{
     buffer::Buffer,
-    datatypes::{DataType, Field},
+    datatypes::{DataType, Field, TimeUnit},
     types::NativeType,
 };
-use chrono::{NaiveDate, NaiveDateTime};
+use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 
 /// Trait implemented by all types that can be used as an Arrow field.
 ///
 /// Implementations are provided for types already supported by the arrow2 crate:
 /// - numeric types: [`u8`], [`u16`], [`u32`], [`u64`], [`i8`], [`i16`], [`i32`], [`i128`], [`i64`], [`f32`], [`f64`],
 /// - other types: [`bool`], [`String`]
-/// - temporal types: [`chrono::NaiveDate`], [`chrono::NaiveDateTime`]
+/// - temporal types: [`chrono::NaiveDate`], [`chrono::NaiveTime`], [`chrono::NaiveDateTime`]
 ///
 /// Custom implementations can be provided for other types.
 ///
@@ -174,6 +174,15 @@ impl ArrowField for NaiveDate {
     }
 }
 
+impl ArrowField for NaiveTime {
+    type Type = Self;
+
+    #[inline]
+    fn data_type() -> arrow2::datatypes::DataType {
+        arrow2::datatypes::DataType::Time32(TimeUnit::Second)
+    }
+}
+
 impl ArrowField for Buffer<u8> {
     type Type = Self;
 
@@ -281,6 +290,7 @@ arrow_enable_vec_for_type!(LargeString);
 arrow_enable_vec_for_type!(bool);
 arrow_enable_vec_for_type!(NaiveDateTime);
 arrow_enable_vec_for_type!(NaiveDate);
+arrow_enable_vec_for_type!(NaiveTime);
 arrow_enable_vec_for_type!(Vec<u8>);
 arrow_enable_vec_for_type!(Buffer<u8>);
 arrow_enable_vec_for_type!(LargeBinary);
